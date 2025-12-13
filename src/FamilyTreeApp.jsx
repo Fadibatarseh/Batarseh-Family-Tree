@@ -12,25 +12,13 @@ export default function FamilyTreeApp() {
   const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [] });
   const treeRef = useRef(null);
 
-  // --- MERMAID INIT ---
   useEffect(() => {
     mermaid.initialize({ 
-      startOnLoad: false,
-      securityLevel: 'loose',
-      theme: 'base',
-      flowchart: { curve: 'stepAfter' },
-      themeVariables: {
-        primaryColor: '#ffffff',
-        primaryTextColor: '#000000',
-        primaryBorderColor: '#b91c1c',
-        lineColor: '#555',
-        secondaryColor: '#f4f4f4',
-        tertiaryColor: '#fff'
-      }
+      startOnLoad: false, securityLevel: 'loose', theme: 'base', flowchart: { curve: 'stepAfter' },
+      themeVariables: { primaryColor: '#ffffff', primaryTextColor: '#000000', primaryBorderColor: '#b91c1c', lineColor: '#555', secondaryColor: '#f4f4f4', tertiaryColor: '#fff' }
     });
   }, []); 
 
-  // --- FETCH DATA ---
   useEffect(() => { fetchPeople(); }, []);
 
   async function fetchPeople() {
@@ -45,7 +33,6 @@ export default function FamilyTreeApp() {
     finally { setLoading(false); }
   }
 
-  // --- RENDER TREE ---
   useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
   async function renderTree() {
@@ -73,7 +60,6 @@ export default function FamilyTreeApp() {
     catch (error) { console.error("Mermaid Render Error:", error); }
   }
 
-  // --- HANDLERS ---
   function openEdit(id) {
     const p = people[id];
     setCurrentEdit(id);
@@ -107,10 +93,8 @@ export default function FamilyTreeApp() {
     setModalOpen(false);
   }
 
-  // --- RENDER UI ---
   return (
     <div style={styles.pageContainer}>
-      {/* HEADER POSTER */}
       <div style={styles.heroSection}>
         <div style={styles.heroContent}>
             <img src={logo} alt="Logo" style={styles.bigLogo} />
@@ -119,18 +103,15 @@ export default function FamilyTreeApp() {
         </div>
       </div>
 
-      {/* SCROLLABLE SHEET */}
       <div style={styles.contentLayer}>
         <div style={styles.contentInner}>
             <div style={styles.actionBar}>
                 <span style={styles.memberCount}>{Object.keys(people).length} Members Found</span>
                 <button onClick={openAdd} style={styles.addButton}>+ Add Member</button>
             </div>
-
             <div style={styles.treeContainer}>
                 {loading ? <p style={{textAlign:"center", padding:20}}>Loading...</p> : <div ref={treeRef} />}
             </div>
-
             <div style={styles.databaseSection}>
                 <h3 style={styles.sectionTitle}>Family Database</h3>
                 <div style={styles.grid}>
@@ -150,7 +131,6 @@ export default function FamilyTreeApp() {
         </div>
       </div>
 
-      {/* POPUP MODAL */}
       {modalOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
@@ -191,34 +171,24 @@ export default function FamilyTreeApp() {
   );
 }
 
-// === ALL STYLES ===
 const styles = {
   pageContainer: { fontFamily: "'Georgia', 'Times New Roman', serif", minHeight: "100vh", backgroundColor: "#2c0b0e" },
-  heroSection: { position: "fixed", top: 0, left: 0, width: "100%", height: "90vh", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 0, background: "linear-gradient(to bottom, #2c0b0e, #5c181f)", color: "white", textAlign: "center" },
-  heroContent: { marginTop: "-100px" },
-  bigLogo: { width: "450px", height: "auto", filter: "drop-shadow(0 0 20px rgba(0,0,0,0.5))" },
-  heroTitle: { fontSize: "3em", fontWeight: "normal", margin: "20px 0 10px 0", letterSpacing: "2px" },
-  heroSubtitle: { fontSize: "1.2em", opacity: 0.8, fontStyle: "italic" },
-  contentLayer: { position: "relative", zIndex: 10, marginTop: "85vh", backgroundColor: "#f4f1ea", minHeight: "100vh", boxShadow: "0 -20px 50px rgba(0,0,0,0.5)", borderTopLeftRadius: "30px", borderTopRightRadius: "30px", paddingBottom: "100px" },
-  contentInner: { maxWidth: "1200px", margin: "0 auto", padding: "40px 20px" },
-  actionBar: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
-  addButton: { padding: "10px 20px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: "30px", cursor: "pointer", fontWeight: "bold" },
-  memberCount: { color: "#555", fontStyle: "italic" },
-  treeContainer: { background: "white", borderRadius: "10px", boxShadow: "0 5px 15px rgba(0,0,0,0.05)", padding: "20px", minHeight: "400px", overflow: "auto", border: "1px solid #ddd" },
-  databaseSection: { marginTop: "50px" },
-  sectionTitle: { borderBottom: "2px solid #b91c1c", display: "inline-block", paddingBottom: "5px", marginBottom: "20px", color: "#444" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "15px" },
-  card: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", background: "white", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", textAlign: "left" },
-  cardImgContainer: { width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", flexShrink: 0, backgroundColor: "#eee" },
-  cardImg: { width: "100%", height: "100%", objectFit: "cover" },
-  cardPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontWeight: "bold" },
-  cardText: { display: "flex", flexDirection: "column" },
-  cardDates: { fontSize: "0.8em", color: "#777" },
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modalBox: { background: "white", padding: "30px", width: "400px", borderRadius: "10px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", gap: "15px", maxHeight: "90vh", overflowY: "auto" },
-  input: { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box" },
-  label: { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" },
-  parentList: { border: "1px solid #ccc", padding: "10px", borderRadius: "5px", maxHeight: "150px", overflowY: "auto", background: "#f9f9f9" },
-  saveButton: { flex: 1, padding: "10px", background: "#b91c1c", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" },
-  cancelButton: { flex: 1, padding: "10px", background: "#eee", color: "black", border: "none", borderRadius: "5px", cursor: "pointer" }
-};
+  
+  heroSection: { 
+    position: "fixed", top: 0, left: 0, width: "100%", height: "90vh", 
+    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 0, 
+    background: "linear-gradient(to bottom, #2c0b0e, #5c181f)", color: "white", textAlign: "center" 
+  },
+  heroContent: { 
+    width: "100%", height: "100%", 
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
+    padding: "20px" 
+  },
+  
+  // --- UPDATED LOGO STYLE ---
+  bigLogo: { 
+    maxWidth: "90vw",   // 90% of screen width
+    maxHeight: "70vh",  // 70% of screen height (leaves room for text)
+    width: "auto", 
+    height: "auto", 
+    objectFit: "contain", // Ensures it never gets squished
