@@ -172,61 +172,62 @@ export default function FamilyTreeApp() {
 }
 
 // === ALL STYLES (UPDATED BEIGE THEME) ===
+// === ALL STYLES (MAXIMUM LOGO SIZE) ===
 const styles = {
   pageContainer: {
     fontFamily: "'Georgia', 'Times New Roman', serif",
     minHeight: "100vh",
-    backgroundColor: "#f4f1ea", // Base color is now beige
+    backgroundColor: "#f4f1ea", 
   },
   
-  // --- HERO SECTION (FIXED BACKGROUND) ---
+  // --- HERO SECTION ---
   heroSection: { 
     position: "fixed", top: 0, left: 0, width: "100%", height: "90vh", 
     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 0, 
-    backgroundColor: "#f4f1ea", // Solid beige background
-    // Removed the dark red gradient
+    backgroundColor: "#f4f1ea", 
     textAlign: "center" 
   },
   heroContent: { 
     width: "100%", height: "100%", 
     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
-    padding: "20px" 
+    padding: "10px" // Reduced padding to allow more space for logo
   },
   
+  // --- HUGE LOGO UPDATE ---
   bigLogo: { 
-    maxWidth: "80vw", maxHeight: "60vh", width: "auto", height: "auto", 
+    maxWidth: "95vw",   // Takes up 95% of the screen width
+    maxHeight: "75vh",  // Takes up 75% of the screen height
+    width: "auto", 
+    height: "auto", 
     objectFit: "contain",
-    // Removed drop-shadow for a cleaner look on beige
   },
   
-  // --- RED TEXT ---
   heroTitle: { 
-    fontSize: "2.5em", fontWeight: "normal", margin: "20px 0 5px 0", letterSpacing: "2px",
-    color: "#b91c1c" // Red text matching logo
+    fontSize: "2.5em", fontWeight: "normal", margin: "10px 0 5px 0", letterSpacing: "2px",
+    color: "#b91c1c" 
   },
   heroSubtitle: { 
     fontSize: "1.2em", fontStyle: "italic",
-    color: "#b91c1c", // Red text
+    color: "#b91c1c", 
     opacity: 0.8 
   },
 
-  // --- CONTENT LAYER (SLIDES OVER) ---
+  // --- CONTENT LAYER ---
   contentLayer: { 
     position: "relative", zIndex: 10, marginTop: "85vh", 
-    backgroundColor: "#f4f1ea", // Matches hero background for seamless look
+    backgroundColor: "#f4f1ea", 
     minHeight: "100vh", 
-    // Added a subtle shadow so you can see it sliding over
     boxShadow: "0 -10px 30px rgba(185, 28, 28, 0.1)", 
     borderTopLeftRadius: "30px", borderTopRightRadius: "30px", paddingBottom: "100px" 
   },
   contentInner: { maxWidth: "1200px", margin: "0 auto", padding: "40px 20px" },
   actionBar: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
   addButton: { padding: "10px 20px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: "30px", cursor: "pointer", fontWeight: "bold" },
-  memberCount: { color: "#b91c1c", fontStyle: "italic" }, // Changed to red
+  memberCount: { color: "#b91c1c", fontStyle: "italic" }, 
   
   treeContainer: { background: "white", borderRadius: "10px", boxShadow: "0 5px 15px rgba(0,0,0,0.05)", padding: "20px", minHeight: "400px", overflow: "auto", border: "1px solid #e5e7eb" },
   databaseSection: { marginTop: "50px" },
-  sectionTitle: { borderBottom: "2px solid #b91c1c", display: "inline-block", paddingBottom: "5px", marginBottom: "20px", color: "#b91c1c" }, // Changed to red
+  sectionTitle: { borderBottom: "2px solid #b91c1c", display: "inline-block", paddingBottom: "5px", marginBottom: "20px", color: "#b91c1c" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "15px" },
   card: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", background: "white", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", textAlign: "left" },
   cardImgContainer: { width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", flexShrink: 0, backgroundColor: "#eee" },
