@@ -12,7 +12,7 @@ export default function FamilyTreeApp() {
   const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [] });
   const treeRef = useRef(null);
 
-  // 1. INITIALIZE MERMAID
+  // --- 1. INITIALIZE MERMAID ---
   useEffect(() => {
     mermaid.initialize({ 
       startOnLoad: false,
@@ -30,7 +30,7 @@ export default function FamilyTreeApp() {
     });
   }, []); 
 
-  // 2. FETCH DATA FROM SUPABASE
+  // --- 2. FETCH DATA ---
   useEffect(() => {
     fetchPeople();
   }, []);
@@ -39,15 +39,10 @@ export default function FamilyTreeApp() {
     try {
       setLoading(true);
       const { data, error } = await supabase.from('family_members').select('*');
-      
       if (error) throw error;
 
-      // Convert Array from DB back to Object for our app logic
       const peopleObject = {};
-      data.forEach(person => {
-        peopleObject[person.id] = person;
-      });
-      
+      data.forEach(person => { peopleObject[person.id] = person; });
       setPeople(peopleObject);
     } catch (error) {
       console.error("Error loading family:", error.message);
@@ -56,7 +51,7 @@ export default function FamilyTreeApp() {
     }
   }
 
-  // 3. RENDER TREE WHEN PEOPLE CHANGE
+  // --- 3. RENDER TREE ---
   useEffect(() => {
     if (!loading) renderTree();
   }, [people, loading]);
@@ -70,7 +65,6 @@ export default function FamilyTreeApp() {
 
     Object.values(people).forEach(p => {
       const safeName = p.name.replace(/"/g, "'");
-      // Use img_url from DB
       const imgTag = p.img_url 
         ? `<img src='${p.img_url}' width='60' height='60' style='border-radius:50%; object-fit:cover; margin-bottom:5px;' /><br/>` 
         : "";
@@ -78,11 +72,9 @@ export default function FamilyTreeApp() {
     });
 
     Object.values(people).forEach(p => {
-      if (p.parents && p.parents.length > 0) {
+      if (p.parents) {
         p.parents.forEach(parId => {
-          if (people[parId]) {
-            chart += `${parId} --> ${p.id}\n`;
-          }
+          if (people[parId]) chart += `${parId} --> ${p.id}\n`;
         });
       }
     });
@@ -90,11 +82,10 @@ export default function FamilyTreeApp() {
     treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
     try {
       await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') });
-    } catch (error) {
-      console.error("Mermaid Render Error:", error);
-    }
+    } catch (error) { console.error("Mermaid Render Error:", error); }
   }
 
+  // --- 4. FORM HANDLERS ---
   function openEdit(id) {
     const p = people[id];
     setCurrentEdit(id);
@@ -117,10 +108,7 @@ export default function FamilyTreeApp() {
     }
   }
 
-  // 4. SAVE TO SUPABASE
   async function save() {
-    // If no ID (New Person), we don't send an ID so Supabase creates one
-    // If ID exists (Edit), we send it to update
     const personData = {
       name: form.name,
       birth: form.birth,
@@ -130,87 +118,76 @@ export default function FamilyTreeApp() {
     };
 
     if (currentEdit) {
-      // Update existing
-      const { error } = await supabase.from('family_members').update(personData).eq('id', currentEdit);
-      if (error) alert("Error updating: " + error.message);
+      await supabase.from('family_members').update(personData).eq('id', currentEdit);
     } else {
-      // Insert new
-      const { error } = await supabase.from('family_members').insert([personData]);
-      if (error) alert("Error adding: " + error.message);
+      await supabase.from('family_members').insert([personData]);
     }
-
-    // Refresh data from server
     await fetchPeople();
     setModalOpen(false);
   }
 
-return (
+  return (
     <div style={styles.pageContainer}>
       
-      {/* HEADER SECTION */}
-      <div style={styles.header}>
-        <img src={logo} alt="Batarseh Logo" style={styles.logo} />
-        <h1 style={styles.title}>The Batarseh Family Tree</h1>
-        <p style={styles.subtitle}>Preserving our history for future generations</p>
+      {/* FIXED HEADER SECTION (The "Poster" on the wall) 
+          This stays still while you scroll over it.
+      */}
+      <div style={styles.heroSection}>
+        <div style={styles.heroContent}>
+            {/* HUGE LOGO (Approx 5 inches / 480px) */}
+            <img src={logo} alt="Batarseh Logo" style={styles.bigLogo} />
+            <h1 style={styles.heroTitle}>The Batarseh Family</h1>
+            <p style={styles.heroSubtitle}>Scroll down to explore our history</p>
+        </div>
       </div>
 
-      {/* MAIN CONTENT */}
-      <div style={styles.mainContent}>
+      {/* SCROLLABLE CONTENT (The "Sheet" that slides up)
+          This starts lower down the page and covers the logo.
+      */}
+      <div style={styles.contentLayer}>
         
-        {/* ACTION BAR */}
-        <div style={styles.actionBar}>
-           <button onClick={openAdd} style={styles.addButton}>
-             + Add New Member
-           </button>
-           <span style={styles.memberCount}>
-             {Object.keys(people).length} Family Members
-           </span>
-        </div>
+        <div style={styles.contentInner}>
+            {/* Action Bar inside the white sheet */}
+            <div style={styles.actionBar}>
+                <span style={styles.memberCount}>{Object.keys(people).length} Members Found</span>
+                <button onClick={openAdd} style={styles.addButton}>+ Add Member</button>
+            </div>
 
-        {/* THE INTERACTIVE TREE (Scrollable) */}
-        <div style={styles.treeWindow}>
-          {loading ? (
-            <div style={styles.loading}>Loading History...</div>
-          ) : (
-            <div ref={treeRef} style={styles.treeCanvas} />
-          )}
-        </div>
+            {/* The Tree Diagram */}
+            <div style={styles.treeContainer}>
+                {loading ? <p style={{textAlign:"center", padding:20}}>Loading...</p> : <div ref={treeRef} />}
+            </div>
 
-        {/* MEMBER DATABASE (Grid at bottom) */}
-        <div style={styles.databaseSection}>
-          <h3 style={styles.sectionTitle}>Family Database</h3>
-          <div style={styles.grid}>
-            {Object.values(people).map(p => (
-              <button key={p.id} onClick={() => openEdit(p.id)} style={styles.card}>
-                <div style={styles.cardImgContainer}>
-                  {p.img_url ? (
-                    <img src={p.img_url} style={styles.cardImg} />
-                  ) : (
-                    <div style={styles.cardPlaceholder}>{p.name.charAt(0)}</div>
-                  )}
+            {/* The Grid Database */}
+            <div style={styles.databaseSection}>
+                <h3 style={styles.sectionTitle}>Family Database</h3>
+                <div style={styles.grid}>
+                    {Object.values(people).map(p => (
+                    <button key={p.id} onClick={() => openEdit(p.id)} style={styles.card}>
+                        <div style={styles.cardImgContainer}>
+                        {p.img_url ? <img src={p.img_url} style={styles.cardImg} /> : <div style={styles.cardPlaceholder}>{p.name.charAt(0)}</div>}
+                        </div>
+                        <div style={styles.cardText}>
+                        <strong>{p.name}</strong>
+                        <span style={styles.cardDates}>{p.birth} {p.death && `- ${p.death}`}</span>
+                        </div>
+                    </button>
+                    ))}
                 </div>
-                <div style={styles.cardText}>
-                  <strong>{p.name}</strong>
-                  <span style={styles.cardDates}>{p.birth} {p.death && `- ${p.death}`}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+            </div>
         </div>
       </div>
 
-      {/* POPUP MODAL (Same as before, just styled) */}
+      {/* MODAL POPUP */}
       {modalOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
-            <h3 style={{ margin: "0 0 20px 0", fontFamily: "Georgia, serif" }}>
-              {currentEdit ? "Edit Profile" : "Add New Member"}
-            </h3>
-
+            <h3 style={{ margin: "0 0 20px 0" }}>{currentEdit ? "Edit Profile" : "Add New Member"}</h3>
+            
             <label style={styles.label}>Full Name</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={styles.input} />
-            
-            <div style={{display:"flex", gap:"15px"}}>
+
+            <div style={{display:"flex", gap:"10px"}}>
                 <div style={{flex:1}}>
                     <label style={styles.label}>Birth Year</label>
                     <input value={form.birth} onChange={e => setForm({ ...form, birth: e.target.value })} style={styles.input} />
@@ -228,16 +205,16 @@ return (
                <label style={styles.label}>Parents:</label>
                <div style={styles.parentList}>
                  {Object.values(people).filter(p => p.id !== currentEdit).map(p => (
-                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
-                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "10px", transform: "scale(1.2)" }} />
-                       <span style={{ fontSize: "1em" }}>{p.name}</span>
+                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
+                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "10px" }} />
+                       <span>{p.name}</span>
                      </div>
                    ))}
                </div>
             </div>
 
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-              <button onClick={save} style={styles.saveButton}>Save Profile</button>
+              <button onClick={save} style={styles.saveButton}>Save</button>
               <button onClick={() => setModalOpen(false)} style={styles.cancelButton}>Cancel</button>
             </div>
           </div>
@@ -247,171 +224,54 @@ return (
   );
 }
 
-// === PREMIUM STYLES ===
+// === STYLES ===
 const styles = {
   pageContainer: {
     fontFamily: "'Georgia', 'Times New Roman', serif",
-    backgroundColor: "#f4f1ea", // Warm beige background
     minHeight: "100vh",
-    color: "#333",
+    backgroundColor: "#2c0b0e", // Background matches header color so no gaps show
   },
-  header: {
-    textAlign: "center",
-    padding: "40px 20px",
-    background: "linear-gradient(to bottom, #2c0b0e, #5c181f)", // Dark Red Gradient
+  
+  // PARALLAX HERO SECTION
+  heroSection: {
+    position: "fixed", // Stays put!
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "90vh", // Covers most of the initial screen
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 0, // Sits behind the content
+    background: "linear-gradient(to bottom, #2c0b0e, #5c181f)",
     color: "white",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
+    textAlign: "center"
   },
-  logo: {
-    width: "100px",
+  heroContent: {
+    marginTop: "-100px", // Slight nudge up for balance
+  },
+  bigLogo: {
+    width: "450px", // ~5 inches on standard screen
     height: "auto",
-    marginBottom: "10px",
-    filter: "drop-shadow(0 0 10px rgba(255,255,255,0.2))"
+    filter: "drop-shadow(0 0 20px rgba(0,0,0,0.5))"
   },
-  title: {
-    margin: "0",
-    fontSize: "2.5em",
+  heroTitle: {
+    fontSize: "3em",
     fontWeight: "normal",
-    letterSpacing: "1px"
+    margin: "20px 0 10px 0",
+    letterSpacing: "2px"
   },
-  subtitle: {
-    margin: "5px 0 0 0",
+  heroSubtitle: {
+    fontSize: "1.2em",
     opacity: 0.8,
     fontStyle: "italic"
   },
-  mainContent: {
-    maxWidth: "1200px",
-    margin: "-30px auto 0", // Pulls content up slightly over header
-    padding: "0 20px 40px"
-  },
-  actionBar: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "15px"
-  },
-  addButton: {
-    padding: "12px 24px",
-    backgroundColor: "#b91c1c",
-    color: "#fff",
-    border: "none",
-    borderRadius: "30px",
-    cursor: "pointer",
-    fontSize: "1em",
-    fontWeight: "bold",
-    boxShadow: "0 4px 6px rgba(185, 28, 28, 0.3)",
-    transition: "transform 0.2s"
-  },
-  memberCount: {
-    color: "#666",
-    fontStyle: "italic"
-  },
-  treeWindow: {
-    background: "white",
-    borderRadius: "15px",
-    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-    height: "70vh", // Takes up 70% of the screen height
-    overflow: "auto", // Allows scrolling inside the box
+
+  // SLIDING CONTENT LAYER
+  contentLayer: {
     position: "relative",
-    border: "1px solid #e5e7eb"
-  },
-  treeCanvas: {
-    minWidth: "100%",
-    minHeight: "100%",
-    padding: "40px",
-    boxSizing: "border-box",
-    display: "flex",
-    justifyContent: "center"
-  },
-  loading: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100%",
-    color: "#999",
-    fontSize: "1.2em"
-  },
-  databaseSection: {
-    marginTop: "50px",
-    borderTop: "1px solid #ccc",
-    paddingTop: "30px"
-  },
-  sectionTitle: {
-    color: "#444",
-    borderBottom: "2px solid #b91c1c",
-    display: "inline-block",
-    paddingBottom: "5px",
-    marginBottom: "20px"
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "15px"
-  },
-  card: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "10px",
-    background: "white",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    cursor: "pointer",
-    textAlign: "left",
-    transition: "box-shadow 0.2s",
-    fontFamily: "inherit"
-  },
-  cardImgContainer: {
-    width: "40px",
-    height: "40px",
-    borderRadius: "50%",
-    overflow: "hidden",
-    flexShrink: 0,
-    backgroundColor: "#eee"
-  },
-  cardImg: {
-    width: "100%",
-    height: "100%",
-    objectFit: "cover"
-  },
-  cardPlaceholder: {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#999",
-    fontWeight: "bold"
-  },
-  cardText: {
-    display: "flex",
-    flexDirection: "column"
-  },
-  cardDates: {
-    fontSize: "0.8em",
-    color: "#777"
-  },
-  // Modal Styles
-  modalOverlay: {
-    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-    background: "rgba(44, 11, 14, 0.8)", // Dark red tinted overlay
-    display: "flex", alignItems: "center", justifyContent: "center",
-    zIndex: 1000,
-    backdropFilter: "blur(3px)"
-  },
-  modalBox: {
-    background: "white",
-    padding: "40px",
-    width: "450px",
-    borderRadius: "10px",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    maxHeight: "90vh",
-    overflowY: "auto",
-    display: "flex", flexDirection: "column", gap: "15px"
-  },
-  input: { padding: "12px", border: "1px solid #ccc", borderRadius: "6px", width: "100%", boxSizing: "border-box", fontSize: "1em" },
-  label: { fontSize: "0.9em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" },
-  parentList: { border: "1px solid #eee", padding: "15px", borderRadius: "6px", maxHeight: "150px", overflowY: "auto", background: "#fcfcfc" },
-  saveButton: { flex: 1, padding: "12px", background: "#b91c1c", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "1em", fontWeight: "bold" },
-  cancelButton: { flex: 1, padding: "12px", background: "#f3f4f6", color: "#4b5563", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "1em" }
-};
+    zIndex: 10, // Sits ON TOP of the logo
+    marginTop: "85vh", // Starts 85% down the page (so you see the logo first)
+    backgroundColor: "#f4f1ea", // Beige paper color
+    minHeight: "100vh",
+    boxShadow
