@@ -12,7 +12,6 @@ export default function FamilyTreeApp() {
   const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [] });
   const treeRef = useRef(null);
 
-  // --- 1. INITIALIZE MERMAID ---
   useEffect(() => {
     mermaid.initialize({ 
       startOnLoad: false,
@@ -30,44 +29,31 @@ export default function FamilyTreeApp() {
     });
   }, []); 
 
-  // --- 2. FETCH DATA ---
-  useEffect(() => {
-    fetchPeople();
-  }, []);
+  useEffect(() => { fetchPeople(); }, []);
 
   async function fetchPeople() {
     try {
       setLoading(true);
       const { data, error } = await supabase.from('family_members').select('*');
       if (error) throw error;
-
       const peopleObject = {};
       data.forEach(person => { peopleObject[person.id] = person; });
       setPeople(peopleObject);
-    } catch (error) {
-      console.error("Error loading family:", error.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { console.error("Error loading family:", error.message); } 
+    finally { setLoading(false); }
   }
 
-  // --- 3. RENDER TREE ---
-  useEffect(() => {
-    if (!loading) renderTree();
-  }, [people, loading]);
+  useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
   async function renderTree() {
     if (!treeRef.current || Object.keys(people).length === 0) return;
-
     let chart = `flowchart TD\n`;
     chart += `classDef mainNode fill:#fff,stroke:#b91c1c,stroke-width:2px,rx:5,ry:5,color:#000,width:150px;\n`;
     chart += `linkStyle default stroke:#666,stroke-width:2px;\n`;
 
     Object.values(people).forEach(p => {
       const safeName = p.name.replace(/"/g, "'");
-      const imgTag = p.img_url 
-        ? `<img src='${p.img_url}' width='60' height='60' style='border-radius:50%; object-fit:cover; margin-bottom:5px;' /><br/>` 
-        : "";
+      const imgTag = p.img_url ? `<img src='${p.img_url}' width='60' height='60' style='border-radius:50%; object-fit:cover; margin-bottom:5px;' /><br/>` : "";
       chart += `${p.id}("${imgTag}<b>${safeName}</b><br/><span style='font-size:0.8em'>${p.birth}${p.death ? ` - ${p.death}` : ""}</span>"):::mainNode\n`;
     });
 
@@ -80,12 +66,10 @@ export default function FamilyTreeApp() {
     });
 
     treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
-    try {
-      await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') });
-    } catch (error) { console.error("Mermaid Render Error:", error); }
+    try { await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') }); } 
+    catch (error) { console.error("Mermaid Render Error:", error); }
   }
 
-  // --- 4. FORM HANDLERS ---
   function openEdit(id) {
     const p = people[id];
     setCurrentEdit(id);
@@ -109,14 +93,7 @@ export default function FamilyTreeApp() {
   }
 
   async function save() {
-    const personData = {
-      name: form.name,
-      birth: form.birth,
-      death: form.death,
-      img_url: form.img_url,
-      parents: form.parents
-    };
-
+    const personData = { name: form.name, birth: form.birth, death: form.death, img_url: form.img_url, parents: form.parents };
     if (currentEdit) {
       await supabase.from('family_members').update(personData).eq('id', currentEdit);
     } else {
@@ -128,20 +105,15 @@ export default function FamilyTreeApp() {
 
   return (
     <div style={styles.pageContainer}>
-      
-      {/* FIXED HEADER SECTION */}
       <div style={styles.heroSection}>
         <div style={styles.heroContent}>
-            {/* HUGE LOGO */}
             <img src={logo} alt="Batarseh Logo" style={styles.bigLogo} />
             <h1 style={styles.heroTitle}>The Batarseh Family</h1>
             <p style={styles.heroSubtitle}>Scroll down to explore our history</p>
         </div>
       </div>
 
-      {/* SCROLLABLE CONTENT */}
       <div style={styles.contentLayer}>
-        
         <div style={styles.contentInner}>
             <div style={styles.actionBar}>
                 <span style={styles.memberCount}>{Object.keys(people).length} Members Found</span>
@@ -171,54 +143,11 @@ export default function FamilyTreeApp() {
         </div>
       </div>
 
-      {/* MODAL POPUP */}
       {modalOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
-            <h3 style={{ margin: "0 0 20px 0" }}>{currentEdit ? "Edit Profile" : "Add New Member"}</h3>
-            
-            <label style={styles.label}>Full Name</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={styles.input} />
-
-            <div style={{display:"flex", gap:"10px"}}>
-                <div style={{flex:1}}>
-                    <label style={styles.label}>Birth Year</label>
-                    <input value={form.birth} onChange={e => setForm({ ...form, birth: e.target.value })} style={styles.input} />
-                </div>
-                <div style={{flex:1}}>
-                    <label style={styles.label}>Death Year</label>
-                    <input value={form.death} onChange={e => setForm({ ...form, death: e.target.value })} style={styles.input} />
-                </div>
-            </div>
-
-            <label style={styles.label}>Photo URL</label>
-            <input placeholder="https://..." value={form.img_url} onChange={e => setForm({ ...form, img_url: e.target.value })} style={styles.input} />
-            
-            <div>
-               <label style={styles.label}>Parents:</label>
-               <div style={styles.parentList}>
-                 {Object.values(people).filter(p => p.id !== currentEdit).map(p => (
-                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
-                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "10px" }} />
-                       <span>{p.name}</span>
-                     </div>
-                   ))}
-               </div>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-              <button onClick={save} style={styles.saveButton}>Save</button>
-              <button onClick={() => setModalOpen(false)} style={styles.cancelButton}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// === STYLES ===
-const styles = {
+            <h3 style={{ margin: "0 0 20px 0" }}>{currentEdit ? "Edit Profile"
+              const styles = {
   pageContainer: {
     fontFamily: "'Georgia', 'Times New Roman', serif",
     minHeight: "100vh",
@@ -266,4 +195,15 @@ const styles = {
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "15px" },
   card: { display: "flex", alignItems: "center", gap: "10px", padding: "10px", background: "white", border: "1px solid #ddd", borderRadius: "8px", cursor: "pointer", textAlign: "left" },
   cardImgContainer: { width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", flexShrink: 0, backgroundColor: "#eee" },
-  cardImg: { width: "100%",
+  cardImg: { width: "100%", height: "100%", objectFit: "cover" },
+  cardPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontWeight: "bold" },
+  cardText: { display: "flex", flexDirection: "column" },
+  cardDates: { fontSize: "0.8em", color: "#777" },
+  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
+  modalBox: { background: "white", padding: "30px", width: "400px", borderRadius: "10px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", gap: "15px", maxHeight: "90vh", overflowY: "auto" },
+  input: { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box" },
+  label: { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" },
+  parentList: { border: "1px solid #ccc", padding: "10px", borderRadius: "5px", maxHeight: "150px", overflowY: "auto", background: "#f9f9f9" },
+  saveButton: { flex: 1, padding: "10px", background: "#b91c1c", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" },
+  cancelButton: { flex: 1, padding: "10px", background: "#eee", color: "black", border: "none", borderRadius: "5px", cursor: "pointer" }
+};
