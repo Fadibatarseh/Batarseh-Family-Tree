@@ -144,85 +144,101 @@ export default function FamilyTreeApp() {
     setModalOpen(false);
   }
 
-  return (
-    <div style={{ padding: "40px", fontFamily: "Helvetica, Arial, sans-serif", backgroundColor: "#f9fafb", minHeight: "100vh" }}>
-      <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
+return (
+    <div style={styles.pageContainer}>
+      
+      {/* HEADER SECTION */}
+      <div style={styles.header}>
+        <img src={logo} alt="Batarseh Logo" style={styles.logo} />
+        <h1 style={styles.title}>The Batarseh Family Tree</h1>
+        <p style={styles.subtitle}>Preserving our history for future generations</p>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div style={styles.mainContent}>
         
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <img src={logo} alt="Logo" style={{ width: "120px", height: "auto", marginBottom: "15px" }} />
-          <h1 style={{ color: "#b91c1c", margin: "0" }}>Batarseh Family Tree</h1>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
-           <button onClick={openAdd} style={{ padding: "10px 20px", backgroundColor: "#000", color: "#fff", border: "none", borderRadius: "5px", cursor: "pointer", fontWeight: "bold" }}>
-             + Add Family Member
+        {/* ACTION BAR */}
+        <div style={styles.actionBar}>
+           <button onClick={openAdd} style={styles.addButton}>
+             + Add New Member
            </button>
+           <span style={styles.memberCount}>
+             {Object.keys(people).length} Family Members
+           </span>
         </div>
 
-        <div style={{ 
-          background: "white", padding: "20px", borderRadius: "15px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          height: "600px", overflow: "auto", display: "flex", justifyContent: "center", alignItems: "flex-start" 
-        }}>
-          {loading ? <p>Loading family data...</p> : <div ref={treeRef} style={{ minWidth: "100%" }} />}
+        {/* THE INTERACTIVE TREE (Scrollable) */}
+        <div style={styles.treeWindow}>
+          {loading ? (
+            <div style={styles.loading}>Loading History...</div>
+          ) : (
+            <div ref={treeRef} style={styles.treeCanvas} />
+          )}
         </div>
 
-        <div style={{ marginTop: "40px", borderTop: "2px solid #eee", paddingTop: "20px" }}>
-          <h3 style={{ color: "#444" }}>Member Database</h3>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        {/* MEMBER DATABASE (Grid at bottom) */}
+        <div style={styles.databaseSection}>
+          <h3 style={styles.sectionTitle}>Family Database</h3>
+          <div style={styles.grid}>
             {Object.values(people).map(p => (
-              <button 
-                key={p.id} 
-                onClick={() => openEdit(p.id)}
-                style={{ padding: "8px 12px", background: "#fff", border: "1px solid #ddd", borderRadius: "20px", cursor: "pointer", fontSize: "0.9em", display: "flex", alignItems: "center", gap: "5px" }}
-              >
-                {p.img_url && <img src={p.img_url} style={{width:20, height:20, borderRadius:"50%"}} />}
-                {p.name}
+              <button key={p.id} onClick={() => openEdit(p.id)} style={styles.card}>
+                <div style={styles.cardImgContainer}>
+                  {p.img_url ? (
+                    <img src={p.img_url} style={styles.cardImg} />
+                  ) : (
+                    <div style={styles.cardPlaceholder}>{p.name.charAt(0)}</div>
+                  )}
+                </div>
+                <div style={styles.cardText}>
+                  <strong>{p.name}</strong>
+                  <span style={styles.cardDates}>{p.birth} {p.death && `- ${p.death}`}</span>
+                </div>
               </button>
             ))}
           </div>
         </div>
       </div>
 
+      {/* POPUP MODAL (Same as before, just styled) */}
       {modalOpen && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-        }}>
-          <div style={{ background: "white", padding: "30px", width: "400px", borderRadius: "10px", display: "flex", flexDirection: "column", gap: "15px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)", maxHeight: "90vh", overflowY: "auto" }}>
-            <h3 style={{ margin: 0 }}>{currentEdit ? "Edit" : "Add"} Person</h3>
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalBox}>
+            <h3 style={{ margin: "0 0 20px 0", fontFamily: "Georgia, serif" }}>
+              {currentEdit ? "Edit Profile" : "Add New Member"}
+            </h3>
 
-            <label style={labelStyle}>Full Name</label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} />
+            <label style={styles.label}>Full Name</label>
+            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={styles.input} />
             
-            <div style={{display:"flex", gap:"10px"}}>
+            <div style={{display:"flex", gap:"15px"}}>
                 <div style={{flex:1}}>
-                    <label style={labelStyle}>Birth Year</label>
-                    <input value={form.birth} onChange={e => setForm({ ...form, birth: e.target.value })} style={inputStyle} />
+                    <label style={styles.label}>Birth Year</label>
+                    <input value={form.birth} onChange={e => setForm({ ...form, birth: e.target.value })} style={styles.input} />
                 </div>
                 <div style={{flex:1}}>
-                    <label style={labelStyle}>Death Year</label>
-                    <input value={form.death} onChange={e => setForm({ ...form, death: e.target.value })} style={inputStyle} />
+                    <label style={styles.label}>Death Year</label>
+                    <input value={form.death} onChange={e => setForm({ ...form, death: e.target.value })} style={styles.input} />
                 </div>
             </div>
 
-            <label style={labelStyle}>Image URL</label>
-            <input placeholder="https://..." value={form.img_url} onChange={e => setForm({ ...form, img_url: e.target.value })} style={inputStyle} />
+            <label style={styles.label}>Photo URL</label>
+            <input placeholder="https://..." value={form.img_url} onChange={e => setForm({ ...form, img_url: e.target.value })} style={styles.input} />
             
             <div>
-               <label style={labelStyle}>Select Parents:</label>
-               <div style={{ border: "1px solid #ccc", padding: "10px", borderRadius: "5px", maxHeight: "150px", overflowY: "scroll", background: "#f9f9f9" }}>
+               <label style={styles.label}>Parents:</label>
+               <div style={styles.parentList}>
                  {Object.values(people).filter(p => p.id !== currentEdit).map(p => (
-                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
-                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "8px" }} />
-                       <span style={{ fontSize: "0.9em" }}>{p.name}</span>
+                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
+                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "10px", transform: "scale(1.2)" }} />
+                       <span style={{ fontSize: "1em" }}>{p.name}</span>
                      </div>
                    ))}
                </div>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-              <button onClick={save} style={{ flex: 1, padding: "10px", background: "#b91c1c", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" }}>Save</button>
-              <button onClick={() => setModalOpen(false)} style={{ flex: 1, padding: "10px", background: "#e5e7eb", color: "black", border: "none", borderRadius: "5px", cursor: "pointer" }}>Cancel</button>
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+              <button onClick={save} style={styles.saveButton}>Save Profile</button>
+              <button onClick={() => setModalOpen(false)} style={styles.cancelButton}>Cancel</button>
             </div>
           </div>
         </div>
@@ -231,5 +247,171 @@ export default function FamilyTreeApp() {
   );
 }
 
-const inputStyle = { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box" };
-const labelStyle = { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" };
+// === PREMIUM STYLES ===
+const styles = {
+  pageContainer: {
+    fontFamily: "'Georgia', 'Times New Roman', serif",
+    backgroundColor: "#f4f1ea", // Warm beige background
+    minHeight: "100vh",
+    color: "#333",
+  },
+  header: {
+    textAlign: "center",
+    padding: "40px 20px",
+    background: "linear-gradient(to bottom, #2c0b0e, #5c181f)", // Dark Red Gradient
+    color: "white",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
+  },
+  logo: {
+    width: "100px",
+    height: "auto",
+    marginBottom: "10px",
+    filter: "drop-shadow(0 0 10px rgba(255,255,255,0.2))"
+  },
+  title: {
+    margin: "0",
+    fontSize: "2.5em",
+    fontWeight: "normal",
+    letterSpacing: "1px"
+  },
+  subtitle: {
+    margin: "5px 0 0 0",
+    opacity: 0.8,
+    fontStyle: "italic"
+  },
+  mainContent: {
+    maxWidth: "1200px",
+    margin: "-30px auto 0", // Pulls content up slightly over header
+    padding: "0 20px 40px"
+  },
+  actionBar: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "15px"
+  },
+  addButton: {
+    padding: "12px 24px",
+    backgroundColor: "#b91c1c",
+    color: "#fff",
+    border: "none",
+    borderRadius: "30px",
+    cursor: "pointer",
+    fontSize: "1em",
+    fontWeight: "bold",
+    boxShadow: "0 4px 6px rgba(185, 28, 28, 0.3)",
+    transition: "transform 0.2s"
+  },
+  memberCount: {
+    color: "#666",
+    fontStyle: "italic"
+  },
+  treeWindow: {
+    background: "white",
+    borderRadius: "15px",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+    height: "70vh", // Takes up 70% of the screen height
+    overflow: "auto", // Allows scrolling inside the box
+    position: "relative",
+    border: "1px solid #e5e7eb"
+  },
+  treeCanvas: {
+    minWidth: "100%",
+    minHeight: "100%",
+    padding: "40px",
+    boxSizing: "border-box",
+    display: "flex",
+    justifyContent: "center"
+  },
+  loading: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    color: "#999",
+    fontSize: "1.2em"
+  },
+  databaseSection: {
+    marginTop: "50px",
+    borderTop: "1px solid #ccc",
+    paddingTop: "30px"
+  },
+  sectionTitle: {
+    color: "#444",
+    borderBottom: "2px solid #b91c1c",
+    display: "inline-block",
+    paddingBottom: "5px",
+    marginBottom: "20px"
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+    gap: "15px"
+  },
+  card: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    padding: "10px",
+    background: "white",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    cursor: "pointer",
+    textAlign: "left",
+    transition: "box-shadow 0.2s",
+    fontFamily: "inherit"
+  },
+  cardImgContainer: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    overflow: "hidden",
+    flexShrink: 0,
+    backgroundColor: "#eee"
+  },
+  cardImg: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover"
+  },
+  cardPlaceholder: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#999",
+    fontWeight: "bold"
+  },
+  cardText: {
+    display: "flex",
+    flexDirection: "column"
+  },
+  cardDates: {
+    fontSize: "0.8em",
+    color: "#777"
+  },
+  // Modal Styles
+  modalOverlay: {
+    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+    background: "rgba(44, 11, 14, 0.8)", // Dark red tinted overlay
+    display: "flex", alignItems: "center", justifyContent: "center",
+    zIndex: 1000,
+    backdropFilter: "blur(3px)"
+  },
+  modalBox: {
+    background: "white",
+    padding: "40px",
+    width: "450px",
+    borderRadius: "10px",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    display: "flex", flexDirection: "column", gap: "15px"
+  },
+  input: { padding: "12px", border: "1px solid #ccc", borderRadius: "6px", width: "100%", boxSizing: "border-box", fontSize: "1em" },
+  label: { fontSize: "0.9em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" },
+  parentList: { border: "1px solid #eee", padding: "15px", borderRadius: "6px", maxHeight: "150px", overflowY: "auto", background: "#fcfcfc" },
+  saveButton: { flex: 1, padding: "12px", background: "#b91c1c", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "1em", fontWeight: "bold" },
+  cancelButton: { flex: 1, padding: "12px", background: "#f3f4f6", color: "#4b5563", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "1em" }
+};
