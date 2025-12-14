@@ -254,17 +254,20 @@ Object.values(people).forEach(p => {
                 <span style={styles.memberCount}>{Object.keys(people).length} Members Found</span>
                 <button onClick={openAdd} style={styles.addButton}>+ Add Member</button>
             </div>
-           <div
-  style={{
-    width: "100vw",
-    marginLeft: "50%",
-    transform: "translateX(-50%)"
-  }}
->
-  <div style={styles.treeContainer}>
-    <div ref={treeRef} />
-  </div>
+     <div style={styles.treeContainer}>
+  <div
+    ref={treeRef}
+    style={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      minWidth: "100%",
+      minHeight: "100%"
+    }}
+  />
 </div>
+
             <div style={styles.databaseSection}>
                 <h3 style={styles.sectionTitle}>Family Database</h3>
                 <div style={styles.grid}>
