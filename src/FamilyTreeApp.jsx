@@ -370,7 +370,11 @@ const styles = {
   heroTitle: { fontSize: "2.5em", fontWeight: "normal", margin: "10px 0 5px 0", letterSpacing: "2px", color: "#b91c1c" },
   heroSubtitle: { fontSize: "1.2em", fontStyle: "italic", color: "#b91c1c", opacity: 0.8 },
   contentLayer: { position: "relative", zIndex: 10, marginTop: "85vh", backgroundColor: "#f4f1ea", minHeight: "100vh", boxShadow: "0 -10px 30px rgba(185, 28, 28, 0.1)", borderTopLeftRadius: "30px", borderTopRightRadius: "30px", paddingBottom: "100px" },
-  contentInner: { maxWidth: "1200px", margin: "0 auto", padding: "40px 20px" },
+contentInner: {
+  maxWidth: "none",        // ✅ remove cap
+  width: "100%",
+  padding: "40px 20px"
+},
   actionBar: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
   addButton: { padding: "10px 20px", background: "#b91c1c", color: "#fff", border: "none", borderRadius: "30px", cursor: "pointer", fontWeight: "bold" },
   memberCount: { color: "#b91c1c", fontStyle: "italic" },
