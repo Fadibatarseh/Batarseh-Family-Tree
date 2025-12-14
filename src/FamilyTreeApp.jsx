@@ -39,48 +39,62 @@ export default function FamilyTreeApp() {
 
   useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
-  // --- NEW RENDER TREE FUNCTION (With Knots & Rectangles) ---
+// UPDATED: renderTree with "Sanitizer" to prevent syntax errors
   async function renderTree() {
     if (!treeRef.current || Object.keys(people).length === 0) return;
     
+    // Helper to escape characters that break Mermaid (like parens and quotes)
+    const sanitize = (text) => {
+        if (!text) return "";
+        return text.toString()
+            .replace(/"/g, "'")       // Convert double quotes to single
+            .replace(/\(/g, "#40;")   // Escape (
+            .replace(/\)/g, "#41;")   // Escape )
+            .replace(/</g, "&lt;")    // Escape <
+            .replace(/>/g, "&gt;")    // Escape >
+            .replace(/#/g, "");       // Remove # to prevent ID conflicts
+    };
+
     let chart = `flowchart TD\n`;
     
-    // 1. Define Styles (Rectangular Nodes + Invisible Knots)
+    // 1. Styles
     chart += `classDef mainNode fill:#fff,stroke:#b91c1c,stroke-width:2px,color:#000,width:150px;\n`;
     chart += `classDef marriageNode width:10px,height:10px,fill:#000,stroke:none,color:transparent;\n`;
     chart += `linkStyle default stroke:#666,stroke-width:2px;\n`;
 
     // 2. Draw People Nodes
     Object.values(people).forEach(p => {
-      const safeName = p.name.replace(/"/g, "'");
+      // Clean ALL text fields to prevent crashes
+      const safeName = sanitize(p.name);
+      const safeBirth = sanitize(p.birth);
+      const safeDeath = sanitize(p.death);
+      
       const imgTag = p.img_url ? `<img src='${p.img_url}' width='50' height='50' style='object-fit:cover; margin-bottom:5px;' /><br/>` : "";
-      chart += `${p.id}("${imgTag}<b>${safeName}</b><br/><span style='font-size:0.8em'>${p.birth}${p.death ? ` - ${p.death}` : ""}</span>"):::mainNode\n`;
+      
+      // We construct the node. Note: We use the ID as is, assuming UUIDs are safe-ish, 
+      // but the Label inside ("...") must be perfectly clean.
+      chart += `${p.id}("${imgTag}<b>${safeName}</b><br/><span style='font-size:0.8em'>${safeBirth}${safeDeath ? ` - ${safeDeath}` : ""}</span>"):::mainNode\n`;
     });
 
-    // 3. Draw Marriage Knots (The "T" Shape Logic)
+    // 3. Draw Marriage Knots
     const knots = {}; 
-    
     Object.values(people).forEach(p => {
       if (p.spouse && people[p.spouse]) {
         const coupleKey = [p.id, p.spouse].sort().join("-");
-        
         if (!knots[coupleKey]) {
+           // We remove hyphens from the knot ID to be safe
            const knotId = `union${coupleKey.replace(/-/g, '')}`; 
            knots[coupleKey] = knotId;
-           
-           // Draw invisible knot
            chart += `${knotId}( ) :::marriageNode\n`;
-           // Link parents to knot
            chart += `${p.id} --- ${knotId} --- ${p.spouse}\n`;
         }
       }
     });
 
-    // 4. Link Children to Parents (or Knots)
+    // 4. Link Children
     Object.values(people).forEach(p => {
       if (p.parents && p.parents.length > 0) {
         let linkedToKnot = false;
-
         if (p.parents.length === 2) {
             const coupleKey = [...p.parents].sort().join("-");
             if (knots[coupleKey]) {
@@ -88,7 +102,6 @@ export default function FamilyTreeApp() {
                 linkedToKnot = true;
             }
         }
-
         if (!linkedToKnot) {
             p.parents.forEach(parId => {
                if (people[parId]) chart += `${parId} --> ${p.id}\n`;
