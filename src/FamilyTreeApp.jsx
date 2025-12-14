@@ -7,18 +7,26 @@ export default function FamilyTreeApp() {
   const [people, setPeople] = useState({});
   const [loading, setLoading] = useState(true);
   
-  const [currentEdit, setCurrentEdit] = useState(null);
+  // Modal State
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [], spouse: "" });
+  const [currentEdit, setCurrentEdit] = useState(null);
+  const [activeTab, setActiveTab] = useState("parents"); // "parents" or "children"
+  
+  // Form State
+  const [form, setForm] = useState({ 
+    name: "", birth: "", death: "", img_url: "", parents: [], spouse: "" 
+  });
+  const [selectedChildren, setSelectedChildren] = useState([]); // Track children separately
+
   const treeRef = useRef(null);
 
+  // 1. INITIALIZE MERMAID
   useEffect(() => {
-    // Initialize Mermaid with "stepAfter" for clean lines
     mermaid.initialize({ 
       startOnLoad: false, 
       securityLevel: 'loose', 
       theme: 'base', 
-      flowchart: { curve: 'stepAfter' },
+      flowchart: { curve: 'stepAfter' }, // "stepAfter" gives those clean right-angles
       themeVariables: { primaryColor: '#ffffff', primaryTextColor: '#000000', primaryBorderColor: '#b91c1c', lineColor: '#555', secondaryColor: '#f4f4f4', tertiaryColor: '#fff' }
     });
   }, []); 
@@ -37,13 +45,14 @@ export default function FamilyTreeApp() {
     finally { setLoading(false); }
   }
 
+  // Render whenever people change
   useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
-// UPDATED: renderTree (With "Side-by-Side" Alignment Fix)
+  // --- RENDER FUNCTION (With RANK=SAME alignment) ---
   async function renderTree() {
     if (!treeRef.current || Object.keys(people).length === 0) return;
 
-    // 1. HELPER: Strict ID Cleaning
+    // A. STRICT SAFETY FUNCTIONS
     const safeID = (rawId) => {
         if (!rawId) return "UNKNOWN_ID";
         return "NODE_" + String(rawId).replace(/[^a-zA-Z0-9]/g, "_");
@@ -56,13 +65,12 @@ export default function FamilyTreeApp() {
 
     let chart = `flowchart TD\n`;
     
-    // 2. STYLES
+    // B. STYLES
     chart += `classDef mainNode fill:#fff,stroke:#b91c1c,stroke-width:2px,color:#000,width:150px;\n`;
-    // We use a Diamond < > for the marriage knot
     chart += `classDef marriageNode width:0px,height:0px,padding:0px,stroke:none,fill:#000;\n`;
     chart += `linkStyle default stroke:#666,stroke-width:2px;\n`;
 
-    // 3. DRAW NODES
+    // C. DRAW NODES
     Object.values(people).forEach(p => {
       const id = safeID(p.id);
       const name = safeText(p.name);
@@ -73,16 +81,14 @@ export default function FamilyTreeApp() {
       chart += `${id}("${imgTag}<b>${name}</b><br/><span style='font-size:0.8em'>${birth}${death ? ` - ${death}` : ""}</span>"):::mainNode\n`;
     });
 
-    // 4. DRAW COUPLES (With Alignment Fix)
+    // D. DRAW MARRIAGES (With FORCE RANK Alignment)
     const knots = {};
-    const processedSpouses = new Set(); // To prevent crashes if someone has 2 spouses
-
     Object.values(people).forEach(p => {
       if (p.spouse && people[p.spouse]) {
         const p1 = safeID(p.id);
         const p2 = safeID(p.spouse);
         
-        // Create unique key for the couple
+        // Unique Key for couple
         const pair = [p1, p2].sort(); 
         const coupleKey = pair.join("_X_"); 
 
@@ -90,38 +96,21 @@ export default function FamilyTreeApp() {
            const knotId = `KNOT_${coupleKey}`; 
            knots[coupleKey] = knotId;
            
-           // ALIGNMENT FIX: Wrap the couple in a Subgraph
-           // This forces "Left-to-Right" layout for just these two people
-           // We only do this if they haven't been "grouped" already to avoid conflicts
-           const canGroup = !processedSpouses.has(p1) && !processedSpouses.has(p2);
-           
-           if (canGroup) {
-               chart += `subgraph SG_${coupleKey} [ ]\n`;
-               chart += `direction LR\n`; // Force Side-by-Side
-               chart += `style SG_${coupleKey} fill:none,stroke:none\n`; // Invisible box
-               chart += `${p1} --- ${knotId} --- ${p2}\n`;
-               chart += `end\n`; // End Subgraph
-               
-               // Mark them as grouped
-               processedSpouses.add(p1);
-               processedSpouses.add(p2);
-           } else {
-               // Fallback for second spouses (standard link)
-               chart += `${p1} --- ${knotId} --- ${p2}\n`;
-           }
-           
-           // Apply style to the knot
            chart += `${knotId}{ }:::marriageNode\n`;
+           chart += `${p1} --- ${knotId} --- ${p2}\n`;
+           
+           // *** THE FIX: Force them to be on the same horizontal level ***
+           chart += `{ rank=same; ${p1}; ${knotId}; ${p2}; }\n`;
         }
       }
     });
 
-    // 5. LINK CHILDREN
+    // E. LINK CHILDREN
     Object.values(people).forEach(p => {
       if (p.parents && Array.isArray(p.parents) && p.parents.length > 0) {
         let linkedToKnot = false;
 
-        // Try to link to Parents' Marriage Knot
+        // 1. Try to link to Parents' Marriage Knot
         if (p.parents.length === 2) {
             const par1 = safeID(p.parents[0]);
             const par2 = safeID(p.parents[1]);
@@ -133,7 +122,7 @@ export default function FamilyTreeApp() {
             }
         }
 
-        // Fallback: Link directly to single parent
+        // 2. Fallback: Link directly to parent
         if (!linkedToKnot) {
             p.parents.forEach(parId => {
                if (people[parId]) {
@@ -146,22 +135,35 @@ export default function FamilyTreeApp() {
 
     treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
     try { await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') }); } 
-    catch (error) { console.error("Render Error:", error); }
+    catch (error) { console.error("Mermaid Render Error:", error); }
   }
-  
-  function openEdit(id) {
-    const p = people[id];
-    setCurrentEdit(id);
-    setForm({ ...p, parents: p.parents || [], spouse: p.spouse || "" });
-    setModalOpen(true);
-  }
+
+  // --- ACTIONS ---
 
   function openAdd() {
     setCurrentEdit(null);
     setForm({ name: "", birth: "", death: "", img_url: "", parents: [], spouse: "" });
+    setSelectedChildren([]); // Reset children
+    setActiveTab("parents");
     setModalOpen(true);
   }
 
+  function openEdit(id) {
+    const p = people[id];
+    setCurrentEdit(id);
+    setForm({ ...p, parents: p.parents || [], spouse: p.spouse || "" });
+    
+    // FIND CHILDREN: Look through all people to see who lists THIS person as a parent
+    const foundChildren = Object.values(people)
+        .filter(child => child.parents && child.parents.includes(id))
+        .map(child => child.id);
+    
+    setSelectedChildren(foundChildren);
+    setActiveTab("parents");
+    setModalOpen(true);
+  }
+
+  // Toggle Parent Checkbox
   function toggleParent(parentId) {
     const currentParents = form.parents || [];
     if (currentParents.includes(parentId)) {
@@ -171,7 +173,18 @@ export default function FamilyTreeApp() {
     }
   }
 
+  // Toggle Child Checkbox
+  function toggleChild(childId) {
+    if (selectedChildren.includes(childId)) {
+        setSelectedChildren(selectedChildren.filter(id => id !== childId));
+    } else {
+        setSelectedChildren([...selectedChildren, childId]);
+    }
+  }
+
+  // --- SAVE LOGIC (Handles Bi-Directional Updates) ---
   async function save() {
+    // 1. Prepare Main Person Data
     const personData = { 
       name: form.name, 
       birth: form.birth || null, 
@@ -182,11 +195,40 @@ export default function FamilyTreeApp() {
     };
     
     try {
+        let savedId = currentEdit;
+
+        // A. Update/Insert the Main Person
         if (currentEdit) {
             await supabase.from('family_members').update(personData).eq('id', currentEdit);
         } else {
-            await supabase.from('family_members').insert([personData]);
+            const { data, error } = await supabase.from('family_members').insert([personData]).select();
+            if (error) throw error;
+            savedId = data[0].id; // Get the new ID
         }
+
+        // B. Update the Children (Reverse Linking)
+        // We need to update every person in "selectedChildren" to include savedId in their parents
+        // And update every person who was UNCHECKED to remove savedId
+        
+        // Get all potential children (everyone in database except self)
+        const potentialChildren = Object.values(people).filter(p => p.id !== savedId);
+
+        for (const child of potentialChildren) {
+            const isSelected = selectedChildren.includes(child.id);
+            const currentParents = child.parents || [];
+            const hasParent = currentParents.includes(savedId);
+
+            if (isSelected && !hasParent) {
+                // ADD RELATIONSHIP: Add savedId to this child's parents
+                const newParents = [...currentParents, savedId];
+                await supabase.from('family_members').update({ parents: newParents }).eq('id', child.id);
+            } else if (!isSelected && hasParent) {
+                // REMOVE RELATIONSHIP: Remove savedId from this child's parents
+                const newParents = currentParents.filter(pid => pid !== savedId);
+                await supabase.from('family_members').update({ parents: newParents }).eq('id', child.id);
+            }
+        }
+
         await fetchPeople();
         setModalOpen(false);
     } catch (error) {
@@ -236,6 +278,8 @@ export default function FamilyTreeApp() {
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
             <h3 style={{ margin: "0 0 20px 0" }}>{currentEdit ? "Edit Profile" : "Add New Member"}</h3>
+            
+            {/* --- BASIC INFO --- */}
             <label style={styles.label}>Full Name</label>
             <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={styles.input} />
             
@@ -253,13 +297,13 @@ export default function FamilyTreeApp() {
             <label style={styles.label}>Photo URL</label>
             <input placeholder="https://..." value={form.img_url} onChange={e => setForm({ ...form, img_url: e.target.value })} style={styles.input} />
 
-            <label style={styles.label}>Spouse (Optional)</label>
+            <label style={styles.label}>Spouse</label>
             <select 
                 value={form.spouse || ""} 
                 onChange={e => setForm({ ...form, spouse: e.target.value })} 
                 style={styles.input}
             >
-                <option value="">No Spouse / Unknown</option>
+                <option value="">No Spouse</option>
                 {Object.values(people)
                     .filter(p => p.id !== currentEdit)
                     .map(p => (
@@ -267,17 +311,44 @@ export default function FamilyTreeApp() {
                 ))}
             </select>
 
-            <div>
-               <label style={styles.label}>Parents:</label>
-               <div style={styles.parentList}>
-                 {Object.values(people).filter(p => p.id !== currentEdit).map(p => (
-                     <div key={p.id} style={{ display: "flex", alignItems: "center", marginBottom: "5px" }}>
-                       <input type="checkbox" checked={(form.parents || []).includes(p.id)} onChange={() => toggleParent(p.id)} style={{ marginRight: "10px" }} />
+            {/* --- TABS FOR RELATIVES --- */}
+            <div style={styles.tabHeader}>
+                <button style={activeTab === "parents" ? styles.activeTab : styles.tab} onClick={() => setActiveTab("parents")}>
+                    Select Parents
+                </button>
+                <button style={activeTab === "children" ? styles.activeTab : styles.tab} onClick={() => setActiveTab("children")}>
+                    Select Children
+                </button>
+            </div>
+
+            <div style={styles.listContainer}>
+                {/* PARENT LIST */}
+                {activeTab === "parents" && Object.values(people).filter(p => p.id !== currentEdit).map(p => (
+                     <div key={p.id} style={styles.checkboxRow}>
+                       <input 
+                            type="checkbox" 
+                            checked={(form.parents || []).includes(p.id)} 
+                            onChange={() => toggleParent(p.id)} 
+                            style={{ marginRight: "10px" }} 
+                        />
                        <span>{p.name}</span>
                      </div>
-                   ))}
-               </div>
+                ))}
+
+                {/* CHILDREN LIST */}
+                {activeTab === "children" && Object.values(people).filter(p => p.id !== currentEdit).map(p => (
+                     <div key={p.id} style={styles.checkboxRow}>
+                       <input 
+                            type="checkbox" 
+                            checked={selectedChildren.includes(p.id)} 
+                            onChange={() => toggleChild(p.id)} 
+                            style={{ marginRight: "10px" }} 
+                        />
+                       <span>{p.name}</span>
+                     </div>
+                ))}
             </div>
+
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button onClick={save} style={styles.saveButton}>Save</button>
               <button onClick={() => setModalOpen(false)} style={styles.cancelButton}>Cancel</button>
@@ -311,11 +382,21 @@ const styles = {
   cardPlaceholder: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontWeight: "bold" },
   cardText: { display: "flex", flexDirection: "column" },
   cardDates: { fontSize: "0.8em", color: "#777" },
+  
+  // MODAL STYLES
   modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modalBox: { background: "white", padding: "30px", width: "400px", borderRadius: "10px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", gap: "15px", maxHeight: "90vh", overflowY: "auto" },
-  input: { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box" },
-  label: { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginBottom: "5px" },
-  parentList: { border: "1px solid #ccc", padding: "10px", borderRadius: "5px", maxHeight: "150px", overflowY: "auto", background: "#f9f9f9" },
+  modalBox: { background: "white", padding: "30px", width: "450px", borderRadius: "10px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)", display: "flex", flexDirection: "column", gap: "10px", maxHeight: "90vh", overflowY: "auto" },
+  input: { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box", marginBottom:"5px" },
+  label: { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginTop: "5px" },
+  
+// TAB STYLES
+  tabHeader: { display: "flex", gap: "5px", marginTop: "10px", borderBottom: "1px solid #ccc" },
+  tab: { flex: 1, padding: "8px", cursor: "pointer", background: "#f9f9f9", border: "1px solid #ccc", borderBottom: "none", borderRadius: "5px 5px 0 0", color: "#666" },
+  activeTab: { flex: 1, padding: "8px", cursor: "pointer", background: "#fff", border: "1px solid #b91c1c", borderBottom: "1px solid #fff", borderRadius: "5px 5px 0 0", fontWeight: "bold", color: "#b91c1c", marginBottom: "-1px" },
+  
+  listContainer: { border: "1px solid #ccc", padding: "10px", borderRadius: "0 0 5px 5px", maxHeight: "150px", overflowY: "auto", background: "#fcfcfc" },
+  checkboxRow: { display: "flex", alignItems: "center", marginBottom: "5px", padding: "5px", borderBottom: "1px solid #eee" },
+  
   saveButton: { flex: 1, padding: "10px", background: "#b91c1c", color: "white", border: "none", borderRadius: "5px", cursor: "pointer" },
   cancelButton: { flex: 1, padding: "10px", background: "#eee", color: "black", border: "none", borderRadius: "5px", cursor: "pointer" }
 };
