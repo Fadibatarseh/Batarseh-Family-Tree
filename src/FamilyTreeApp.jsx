@@ -9,7 +9,7 @@ export default function FamilyTreeApp() {
   
   const [currentEdit, setCurrentEdit] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [] });
+  const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [],spouse: "" });
   const treeRef = useRef(null);
 
   useEffect(() => {
