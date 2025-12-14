@@ -69,7 +69,7 @@ export default function FamilyTreeApp() {
     
     // B. STYLES
     chart += `classDef mainNode fill:#fff,stroke:#b91c1c,stroke-width:2px,color:#000,width:150px;\n`;
-    chart += `classDef marriageNode width:0px,height:0px,padding:0px,stroke:none,fill:#000;\n`;
+    chart += `classDef marriageNode fill:none,stroke:none,width:0,height:0;\n`;
     chart += `linkStyle default stroke:#666,stroke-width:2px;\n`;
 
     // C. DRAW NODES
