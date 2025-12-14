@@ -83,52 +83,34 @@ export default function FamilyTreeApp() {
       chart += `${id}("${imgTag}<b>${name}</b><br/><span style='font-size:0.8em'>${birth}${death ? ` - ${death}` : ""}</span>"):::mainNode\n`;
     });
 
-    // D. DRAW MARRIAGES (Using Subgraphs for Side-by-Side Alignment)
-    const knots = {};
-    const processedSpouses = new Set(); // To prevent duplicate groups
+// D. DRAW MARRIAGES (Correct Horizontal Alignment)
+const knots = {};
+const processed = new Set();
 
-    Object.values(people).forEach(p => {
-      // CHECK: Only proceed if spouse exists in the database
-      if (p.spouse && people[p.spouse]) {
-        const p1 = safeID(p.id);
-        const p2 = safeID(p.spouse);
-        
-        // Prevent Self-Marriage
-        if (p1 === p2) return;
+Object.values(people).forEach(p => {
+  if (!p.spouse || !people[p.spouse]) return;
 
-        // Unique Key for couple
-        const pair = [p1, p2].sort(); 
-        const coupleKey = pair.join("_X_"); 
+  const p1 = safeID(p.id);
+  const p2 = safeID(p.spouse);
 
-        if (!knots[coupleKey]) {
-           const knotId = `KNOT_${coupleKey}`; 
-           knots[coupleKey] = knotId;
-           
-           // ALIGNMENT STRATEGY: 
-           // We create a Subgraph (Invisible Box) and force "Left-to-Right" direction inside it.
-           // This forces the husband and wife to stand next to each other.
-           
-           // We only do this if they aren't already part of another group (to avoid conflicts)
-           const canGroup = !processedSpouses.has(p1) && !processedSpouses.has(p2);
-           
-           if (canGroup) {
-               chart += `subgraph SG_${coupleKey} [ ]\n`;
-               chart += `direction LR\n`; 
-               chart += `style SG_${coupleKey} fill:none,stroke:none\n`; 
-               chart += `${p1} --- ${knotId} --- ${p2}\n`;
-               chart += `end\n`; 
-               
-               processedSpouses.add(p1);
-               processedSpouses.add(p2);
-           } else {
-               // Fallback for complex web of marriages
-               chart += `${p1} --- ${knotId} --- ${p2}\n`;
-           }
-           
-           chart += `${knotId}{ }:::marriageNode\n`;
-        }
-      }
-    });
+  if (p1 === p2) return;
+
+  const pair = [p1, p2].sort();
+  const coupleKey = pair.join("_X_");
+
+  if (processed.has(coupleKey)) return;
+  processed.add(coupleKey);
+
+  const knotId = `KNOT_${coupleKey}`;
+  knots[coupleKey] = knotId;
+
+  // Invisible marriage node
+  chart += `${knotId}{ }:::marriageNode\n`;
+
+  // FORCE left-right alignment
+  chart += `${p1} --- ${knotId} --- ${p2}\n`;
+});
+
 
     // E. LINK CHILDREN
     Object.values(people).forEach(p => {
