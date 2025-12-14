@@ -26,7 +26,7 @@ export default function FamilyTreeApp() {
       startOnLoad: false, 
       securityLevel: 'loose', 
       theme: 'base', 
-      flowchart: { curve: 'stepAfter' }, // "stepAfter" gives those clean right-angles
+      flowchart: { curve: 'stepAfter' }, 
       themeVariables: { primaryColor: '#ffffff', primaryTextColor: '#000000', primaryBorderColor: '#b91c1c', lineColor: '#555', secondaryColor: '#f4f4f4', tertiaryColor: '#fff' }
     });
   }, []); 
@@ -48,16 +48,18 @@ export default function FamilyTreeApp() {
   // Render whenever people change
   useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
-  // --- RENDER FUNCTION (With RANK=SAME alignment) ---
+  // --- RENDER FUNCTION (The "Crash-Proof" Version) ---
   async function renderTree() {
     if (!treeRef.current || Object.keys(people).length === 0) return;
 
     // A. STRICT SAFETY FUNCTIONS
+    // Forces ID to be "NODE_123" with only letters/numbers
     const safeID = (rawId) => {
         if (!rawId) return "UNKNOWN_ID";
         return "NODE_" + String(rawId).replace(/[^a-zA-Z0-9]/g, "_");
     };
 
+    // Cleans text of any code symbols
     const safeText = (rawText) => {
         if (!rawText) return "";
         return String(rawText).replace(/[#<>;:()"']/g, "").trim();
@@ -81,13 +83,19 @@ export default function FamilyTreeApp() {
       chart += `${id}("${imgTag}<b>${name}</b><br/><span style='font-size:0.8em'>${birth}${death ? ` - ${death}` : ""}</span>"):::mainNode\n`;
     });
 
-    // D. DRAW MARRIAGES (With FORCE RANK Alignment)
+    // D. DRAW MARRIAGES (Using Subgraphs for Side-by-Side Alignment)
     const knots = {};
+    const processedSpouses = new Set(); // To prevent duplicate groups
+
     Object.values(people).forEach(p => {
+      // CHECK: Only proceed if spouse exists in the database
       if (p.spouse && people[p.spouse]) {
         const p1 = safeID(p.id);
         const p2 = safeID(p.spouse);
         
+        // Prevent Self-Marriage
+        if (p1 === p2) return;
+
         // Unique Key for couple
         const pair = [p1, p2].sort(); 
         const coupleKey = pair.join("_X_"); 
@@ -96,11 +104,28 @@ export default function FamilyTreeApp() {
            const knotId = `KNOT_${coupleKey}`; 
            knots[coupleKey] = knotId;
            
-           chart += `${knotId}{ }:::marriageNode\n`;
-           chart += `${p1} --- ${knotId} --- ${p2}\n`;
+           // ALIGNMENT STRATEGY: 
+           // We create a Subgraph (Invisible Box) and force "Left-to-Right" direction inside it.
+           // This forces the husband and wife to stand next to each other.
            
-           // *** THE FIX: Force them to be on the same horizontal level ***
-           chart += `{ rank=same; ${p1}; ${knotId}; ${p2}; }\n`;
+           // We only do this if they aren't already part of another group (to avoid conflicts)
+           const canGroup = !processedSpouses.has(p1) && !processedSpouses.has(p2);
+           
+           if (canGroup) {
+               chart += `subgraph SG_${coupleKey} [ ]\n`;
+               chart += `direction LR\n`; 
+               chart += `style SG_${coupleKey} fill:none,stroke:none\n`; 
+               chart += `${p1} --- ${knotId} --- ${p2}\n`;
+               chart += `end\n`; 
+               
+               processedSpouses.add(p1);
+               processedSpouses.add(p2);
+           } else {
+               // Fallback for complex web of marriages
+               chart += `${p1} --- ${knotId} --- ${p2}\n`;
+           }
+           
+           chart += `${knotId}{ }:::marriageNode\n`;
         }
       }
     });
@@ -143,7 +168,7 @@ export default function FamilyTreeApp() {
   function openAdd() {
     setCurrentEdit(null);
     setForm({ name: "", birth: "", death: "", img_url: "", parents: [], spouse: "" });
-    setSelectedChildren([]); // Reset children
+    setSelectedChildren([]);
     setActiveTab("parents");
     setModalOpen(true);
   }
@@ -182,9 +207,8 @@ export default function FamilyTreeApp() {
     }
   }
 
-  // --- SAVE LOGIC (Handles Bi-Directional Updates) ---
+  // --- SAVE LOGIC ---
   async function save() {
-    // 1. Prepare Main Person Data
     const personData = { 
       name: form.name, 
       birth: form.birth || null, 
@@ -203,14 +227,10 @@ export default function FamilyTreeApp() {
         } else {
             const { data, error } = await supabase.from('family_members').insert([personData]).select();
             if (error) throw error;
-            savedId = data[0].id; // Get the new ID
+            savedId = data[0].id; 
         }
 
         // B. Update the Children (Reverse Linking)
-        // We need to update every person in "selectedChildren" to include savedId in their parents
-        // And update every person who was UNCHECKED to remove savedId
-        
-        // Get all potential children (everyone in database except self)
         const potentialChildren = Object.values(people).filter(p => p.id !== savedId);
 
         for (const child of potentialChildren) {
@@ -219,11 +239,11 @@ export default function FamilyTreeApp() {
             const hasParent = currentParents.includes(savedId);
 
             if (isSelected && !hasParent) {
-                // ADD RELATIONSHIP: Add savedId to this child's parents
+                // ADD RELATIONSHIP
                 const newParents = [...currentParents, savedId];
                 await supabase.from('family_members').update({ parents: newParents }).eq('id', child.id);
             } else if (!isSelected && hasParent) {
-                // REMOVE RELATIONSHIP: Remove savedId from this child's parents
+                // REMOVE RELATIONSHIP
                 const newParents = currentParents.filter(pid => pid !== savedId);
                 await supabase.from('family_members').update({ parents: newParents }).eq('id', child.id);
             }
@@ -389,7 +409,7 @@ const styles = {
   input: { padding: "10px", border: "1px solid #ccc", borderRadius: "5px", width: "100%", boxSizing: "border-box", marginBottom:"5px" },
   label: { fontSize: "0.8em", fontWeight: "bold", color: "#555", display: "block", marginTop: "5px" },
   
-// TAB STYLES
+  // TAB STYLES
   tabHeader: { display: "flex", gap: "5px", marginTop: "10px", borderBottom: "1px solid #ccc" },
   tab: { flex: 1, padding: "8px", cursor: "pointer", background: "#f9f9f9", border: "1px solid #ccc", borderBottom: "none", borderRadius: "5px 5px 0 0", color: "#666" },
   activeTab: { flex: 1, padding: "8px", cursor: "pointer", background: "#fff", border: "1px solid #b91c1c", borderBottom: "1px solid #fff", borderRadius: "5px 5px 0 0", fontWeight: "bold", color: "#b91c1c", marginBottom: "-1px" },
