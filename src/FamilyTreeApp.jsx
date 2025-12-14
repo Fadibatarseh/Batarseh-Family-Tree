@@ -9,13 +9,16 @@ export default function FamilyTreeApp() {
   
   const [currentEdit, setCurrentEdit] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  // UPDATED: Added spouse to the initial state
   const [form, setForm] = useState({ name: "", birth: "", death: "", img_url: "", parents: [], spouse: "" });
   const treeRef = useRef(null);
 
   useEffect(() => {
+    // Initialize Mermaid with "stepAfter" for clean lines
     mermaid.initialize({ 
-      startOnLoad: false, securityLevel: 'loose', theme: 'base', flowchart: { curve: 'stepAfter' },
+      startOnLoad: false, 
+      securityLevel: 'loose', 
+      theme: 'base', 
+      flowchart: { curve: 'stepAfter' },
       themeVariables: { primaryColor: '#ffffff', primaryTextColor: '#000000', primaryBorderColor: '#b91c1c', lineColor: '#555', secondaryColor: '#f4f4f4', tertiaryColor: '#fff' }
     });
   }, []); 
@@ -36,68 +39,56 @@ export default function FamilyTreeApp() {
 
   useEffect(() => { if (!loading) renderTree(); }, [people, loading]);
 
-// UPDATED: renderTree with "Marriage Knots" for perfect alignment
+  // --- NEW RENDER TREE FUNCTION (With Knots & Rectangles) ---
   async function renderTree() {
     if (!treeRef.current || Object.keys(people).length === 0) return;
     
-    // We use "ortho" (orthogonal) lines for neat right-angles
     let chart = `flowchart TD\n`;
     
-    // STYLE DEFINITIONS
-    // 1. People: Rectangular boxes
+    // 1. Define Styles (Rectangular Nodes + Invisible Knots)
     chart += `classDef mainNode fill:#fff,stroke:#b91c1c,stroke-width:2px,color:#000,width:150px;\n`;
-    // 2. The Knot: A tiny black dot to represent marriage
     chart += `classDef marriageNode width:10px,height:10px,fill:#000,stroke:none,color:transparent;\n`;
-    
-    // Set curve style to Step for neat T-shaped family lines
-    mermaid.initialize({ flowchart: { curve: 'stepAfter' } }); 
+    chart += `linkStyle default stroke:#666,stroke-width:2px;\n`;
 
-    // 1. Draw All People Nodes First
+    // 2. Draw People Nodes
     Object.values(people).forEach(p => {
       const safeName = p.name.replace(/"/g, "'");
       const imgTag = p.img_url ? `<img src='${p.img_url}' width='50' height='50' style='object-fit:cover; margin-bottom:5px;' /><br/>` : "";
       chart += `${p.id}("${imgTag}<b>${safeName}</b><br/><span style='font-size:0.8em'>${p.birth}${p.death ? ` - ${p.death}` : ""}</span>"):::mainNode\n`;
     });
 
-    // 2. Create "Marriage Knots" & Link Spouses
-    const knots = {}; // Store created knots to reuse them
+    // 3. Draw Marriage Knots (The "T" Shape Logic)
+    const knots = {}; 
     
     Object.values(people).forEach(p => {
       if (p.spouse && people[p.spouse]) {
-        // Create a unique ID for the couple (sort IDs so A-B is same as B-A)
         const coupleKey = [p.id, p.spouse].sort().join("-");
         
-        // If we haven't processed this couple yet...
         if (!knots[coupleKey]) {
-           const knotId = `union${coupleKey.replace(/-/g, '')}`; // e.g., unionJohnJane
+           const knotId = `union${coupleKey.replace(/-/g, '')}`; 
            knots[coupleKey] = knotId;
            
-           // Draw the Knot (Small Dot)
+           // Draw invisible knot
            chart += `${knotId}( ) :::marriageNode\n`;
-           
-           // Link Parents to the Knot: Parent1 --- Knot --- Parent2
+           // Link parents to knot
            chart += `${p.id} --- ${knotId} --- ${p.spouse}\n`;
         }
       }
     });
 
-    // 3. Link Children to Parents (or Knots)
+    // 4. Link Children to Parents (or Knots)
     Object.values(people).forEach(p => {
       if (p.parents && p.parents.length > 0) {
         let linkedToKnot = false;
 
-        // If child has exactly 2 parents, check if they are married (have a Knot)
         if (p.parents.length === 2) {
             const coupleKey = [...p.parents].sort().join("-");
             if (knots[coupleKey]) {
-                // Perfect Match: Link the KNOT to the child
-                // This creates the clean "T" shape
                 chart += `${knots[coupleKey]} --> ${p.id}\n`;
                 linkedToKnot = true;
             }
         }
 
-        // Fallback: If parents aren't married (or single parent), link directly
         if (!linkedToKnot) {
             p.parents.forEach(parId => {
                if (people[parId]) chart += `${parId} --> ${p.id}\n`;
@@ -105,24 +96,6 @@ export default function FamilyTreeApp() {
         }
       }
     });
-
-    treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
-    try { await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') }); } 
-    catch (error) { console.error("Mermaid Render Error:", error); }
-  }
-        // Fallback: If parents aren't married (or single parent), link directly
-        if (!linkedToKnot) {
-            p.parents.forEach(parId => {
-               if (people[parId]) chart += `${parId} --> ${p.id}\n`;
-            });
-        }
-      }
-    });
-
-    treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
-    try { await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') }); } 
-    catch (error) { console.error("Mermaid Render Error:", error); }
-  }
 
     treeRef.current.innerHTML = `<pre class="mermaid" style="width: 100%; height: 100%;">${chart}</pre>`;
     try { await mermaid.run({ nodes: treeRef.current.querySelectorAll('.mermaid') }); } 
@@ -151,7 +124,6 @@ export default function FamilyTreeApp() {
     }
   }
 
-  // UPDATED: Save function handling empty strings and spouse
   async function save() {
     const personData = { 
       name: form.name, 
@@ -174,6 +146,7 @@ export default function FamilyTreeApp() {
         alert("Error saving: " + error.message);
     }
   }
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.heroSection}>
@@ -233,7 +206,6 @@ export default function FamilyTreeApp() {
             <label style={styles.label}>Photo URL</label>
             <input placeholder="https://..." value={form.img_url} onChange={e => setForm({ ...form, img_url: e.target.value })} style={styles.input} />
 
-            {/* NEW SPOUSE SELECTOR */}
             <label style={styles.label}>Spouse (Optional)</label>
             <select 
                 value={form.spouse || ""} 
