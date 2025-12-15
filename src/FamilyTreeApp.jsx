@@ -76,10 +76,6 @@ export default function FamilyTreeApp() {
   }
 
   /* ------------------------- RENDER TREE ------------------------- */
-  useEffect(() => {
-    if (!loading) renderTree();
-  }, [people, loading]);
-
  async function renderTree() {
     if (!treeRef.current) return;
 
@@ -164,6 +160,15 @@ export default function FamilyTreeApp() {
             }
         }
     });
+
+    treeRef.current.innerHTML = `<pre class="mermaid">${chart}</pre>`;
+    try {
+        await mermaid.run({ nodes: treeRef.current.querySelectorAll(".mermaid") });
+        applyTransform();
+    } catch (e) {
+        console.error("Mermaid Render Error", e);
+    }
+  }
 
     treeRef.current.innerHTML = `<pre class="mermaid">${chart}</pre>`;
     try {
