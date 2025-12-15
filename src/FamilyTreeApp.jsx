@@ -216,51 +216,55 @@ async function uploadImage(file, personId) {
 }
 
 async function save() {
-  try {
-    let savedId = currentEdit;
+    try {
+        let savedId = currentEdit;
 
-    if (currentEdit) {
-      await supabase
-        .from("family_members")
-        .update({
-          name: form.name,
-          birth: form.birth || null,
-          death: form.death || null,
-          parents: form.parents || [],
-          spouse: form.spouse || null,
-        })
-        .eq("id", currentEdit);
-    } else {
-      const { data, error } = await supabase
-        .from("family_members")
-        .insert([
-          {
+        // 1. SAVE THE PERSON
+        const personData = {
             name: form.name,
             birth: form.birth || null,
             death: form.death || null,
-            parents: form.parents || [],
             spouse: form.spouse || null,
-          },
-        ])
-        .select();
+            parents: form.parents || []
+        };
 
-      if (error) throw error;
-      savedId = data[0].id;
+        if (currentEdit) {
+            await supabase.from("family_members").update(personData).eq("id", currentEdit);
+        } else {
+            const { data, error } = await supabase.from("family_members").insert([personData]).select();
+            if (error) throw error;
+            savedId = data[0].id;
+        }
+
+        // 2. HANDLE IMAGE UPLOAD (Your existing logic)
+        if (imageFile && savedId) {
+            const imageUrl = await uploadImage(imageFile, savedId);
+            await supabase.from("family_members").update({ img_url: imageUrl }).eq("id", savedId);
+        }
+
+        // 3. UPDATE CHILDREN (The Missing Piece!)
+        // This ensures that if I say "Baby is my child", the Baby's record updates to say "I am the parent"
+        const potentialChildren = Object.values(people).filter(p => p.id !== savedId);
+        
+        for (const child of potentialChildren) {
+            const isSelected = selectedChildren.includes(child.id);
+            const currentParents = child.parents || [];
+            const hasParent = currentParents.includes(savedId);
+
+            if (isSelected && !hasParent) {
+                // Add Link
+                await supabase.from("family_members").update({ parents: [...currentParents, savedId] }).eq("id", child.id);
+            } else if (!isSelected && hasParent) {
+                // Remove Link
+                await supabase.from("family_members").update({ parents: currentParents.filter(pid => pid !== savedId) }).eq("id", child.id);
+            }
+        }
+
+        setModalOpen(false);
+        fetchPeople(); // Refresh data
+    } catch (error) {
+        alert("Save failed: " + error.message);
     }
-
-    if (imageFile && savedId) {
-      const imageUrl = await uploadImage(imageFile, savedId);
-      await supabase
-        .from("family_members")
-        .update({ img_url: imageUrl })
-        .eq("id", savedId);
-    }
-
-    setModalOpen(false);
-    fetchPeople();
-  } catch (error) {
-    alert("Save failed: " + error.message);
-  }
 }
 
 
