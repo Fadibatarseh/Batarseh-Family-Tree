@@ -276,49 +276,87 @@ async function uploadImage(file, personId) {
 
   /* ------------------------- UI ------------------------- */
   return (
-    <div>
-      <img src={logo} style={{ maxWidth: 200 }} />
-      <button onClick={openAdd}>+ Add Member</button>
+   <div style={styles.modalBox}>
+  <h3 style={{ margin: "0 0 20px 0" }}>
+    {currentEdit ? "Edit Profile" : "Add New Member"}
+  </h3>
 
-      <div
-        ref={viewportRef}
-        onWheel={onWheel}
-        onMouseMove={onDrag}
-        style={{
-          height: "80vh",
-          overflow: "hidden",
-          cursor: "grab",
-          background: "#fafafa",
-        }}
-      >
-        <div ref={treeRef} />
-      </div>
-
-      <label style={styles.label}>Upload Photo</label>
-<input
-  type="file"
-  accept="image/*"
-  onChange={(e) => setImageFile(e.target.files[0])}
-/>
-
-{form.img_url && (
-  <img
-    src={form.img_url}
-    alt="Preview"
-    style={{
-      width: 80,
-      height: 80,
-      objectFit: "cover",
-      borderRadius: "8px",
-      marginTop: "10px",
-    }}
+  <label style={styles.label}>Full Name</label>
+  <input
+    value={form.name}
+    onChange={(e) => setForm({ ...form, name: e.target.value })}
+    style={styles.input}
   />
-)}
 
-          <button onClick={save}>Save</button>
-          <button onClick={() => setModalOpen(false)}>Cancel</button>
-        </div>
-      )}
+  <div style={{ display: "flex", gap: "10px" }}>
+    <div style={{ flex: 1 }}>
+      <label style={styles.label}>Birth Year</label>
+      <input
+        value={form.birth}
+        onChange={(e) => setForm({ ...form, birth: e.target.value })}
+        style={styles.input}
+      />
     </div>
+    <div style={{ flex: 1 }}>
+      <label style={styles.label}>Death Year</label>
+      <input
+        value={form.death}
+        onChange={(e) => setForm({ ...form, death: e.target.value })}
+        style={styles.input}
+      />
+    </div>
+  </div>
+
+  {/* IMAGE UPLOAD */}
+  <label style={styles.label}>Upload Photo</label>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => setImageFile(e.target.files[0])}
+  />
+
+  {form.img_url && (
+    <img
+      src={form.img_url}
+      alt="Preview"
+      style={{
+        width: 80,
+        height: 80,
+        objectFit: "cover",
+        borderRadius: "8px",
+        marginTop: "10px",
+      }}
+    />
+  )}
+
+  <label style={styles.label}>Spouse</label>
+  <select
+    value={form.spouse || ""}
+    onChange={(e) => setForm({ ...form, spouse: e.target.value })}
+    style={styles.input}
+  >
+    <option value="">No Spouse</option>
+    {Object.values(people)
+      .filter((p) => p.id !== currentEdit)
+      .map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+  </select>
+
+  <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+    <button onClick={save} style={styles.saveButton}>
+      Save
+    </button>
+    <button
+      onClick={() => setModalOpen(false)}
+      style={styles.cancelButton}
+    >
+      Cancel
+    </button>
+  </div>
+</div>
+
   );
 }
