@@ -320,18 +320,27 @@ export default function FamilyTreeApp() {
     return data.publicUrl;
   }
 
-  async function save() {
+async function save() {
     try {
+      setLoading(true); // Optional: add visual feedback
       let savedId = currentEdit;
       
+      // 1. PREPARE DATA
       const personData = {
         name: form.name,
         birth: form.birth || null,
         death: form.death || null,
         parents: form.parents || [],
-        spouse: form.spouse || null,
+        spouse: form.spouse || null, // Ensure empty string becomes null
       };
 
+      // 2. DETECT SPOUSE CHANGES (The Logic Fix)
+      // We look at the original data in 'people' to see who the OLD spouse was
+      const oldData = people[currentEdit];
+      const oldSpouseId = oldData ? oldData.spouse : null;
+      const newSpouseId = form.spouse || null;
+
+      // 3. UPSERT THE MAIN PERSON
       if (currentEdit) {
         await supabase.from("family_members").update(personData).eq("id", currentEdit);
       } else {
@@ -340,17 +349,32 @@ export default function FamilyTreeApp() {
         savedId = data[0].id;
       }
 
+      // 4. HANDLE PHOTO
       if (imageFile && savedId) {
         const imageUrl = await uploadImage(imageFile, savedId);
         await supabase.from("family_members").update({ img_url: imageUrl }).eq("id", savedId);
       }
 
-      // --- BIDIRECTIONAL SPOUSE UPDATE (The Fix) ---
-      if (form.spouse) {
-          await supabase.from("family_members").update({ spouse: savedId }).eq("id", form.spouse);
-      }
-      // ----------------------------------------------
+      // 5. HANDLE SPOUSE RELATIONSHIPS (Bidirectional)
+      if (oldSpouseId !== newSpouseId) {
+          // A. If there was an EX-spouse, we must "Divorce" them (set their spouse to null)
+          if (oldSpouseId) {
+              await supabase
+                .from("family_members")
+                .update({ spouse: null })
+                .eq("id", oldSpouseId);
+          }
 
+          // B. If there is a NEW spouse, we must "Marry" them (set their spouse to ME)
+          if (newSpouseId) {
+              await supabase
+                .from("family_members")
+                .update({ spouse: savedId })
+                .eq("id", newSpouseId);
+          }
+      }
+
+      // 6. HANDLE PARENT/CHILD RELATIONSHIPS
       const allPeople = Object.values(people).filter(p => p.id !== savedId);
       
       for (const child of allPeople) {
@@ -359,19 +383,22 @@ export default function FamilyTreeApp() {
         const hasParent = currentParents.includes(savedId);
 
         if (isSelected && !hasParent) {
+          // Add me as parent
           await supabase.from("family_members").update({ parents: [...currentParents, savedId] }).eq("id", child.id);
         } else if (!isSelected && hasParent) {
+          // Remove me as parent
           await supabase.from("family_members").update({ parents: currentParents.filter(pid => pid !== savedId) }).eq("id", child.id);
         }
       }
 
       setModalOpen(false);
-      fetchPeople();
+      await fetchPeople(); // Wait for data to refresh before closing loading state
     } catch (error) {
       alert("Save failed: " + error.message);
+    } finally {
+      setLoading(false);
     }
-  }
-
+}
   /* ------------------------- UI RENDER ------------------------- */
   return (
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "sans-serif" }}>
