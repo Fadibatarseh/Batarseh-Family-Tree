@@ -85,34 +85,30 @@ export default function FamilyTreeApp() {
     if (!loading) renderTree();
   }, [people, loading]);
 
-  // THIS IS THE FUNCTION THAT WAS CAUSING ERRORS. 
-  // IT IS NOW FIXED WITH THE 'async' KEYWORD AND NEW LOGIC.
-  async function renderTree() {
+ async function renderTree() {
     if (!treeRef.current) return;
 
     let chart = "flowchart TD\n";
     
     // 1. STYLES
     chart += "classDef main fill:#fff,stroke:#b91c1c,stroke-width:2px,cursor:pointer,rx:5,ry:5;\n";
-    // Invisible connector for marriages/families
     chart += "classDef familyNode width:0px,height:0px,padding:0px,stroke:none,fill:#000;\n";
-    chart += "linkStyle default stroke:#666,stroke-width:2px,fill:none;\n";
+    // We make links gray and squared off
+    chart += "linkStyle default stroke:#888,stroke-width:2px,fill:none;\n"; 
 
-    // 2. DRAW PEOPLE NODES
+    // 2. DRAW PEOPLE
     Object.values(people).forEach((p) => {
       chart += `${safeID(p.id)}("${safeText(p.name)}<br/>${safeText(p.birth)}${
         p.death ? " - " + safeText(p.death) : ""
       }"):::main\n`;
-      
-      // Click Event
       chart += `click ${safeID(p.id)} call window.onNodeClick("${p.id}")\n`;
     });
 
-    // 3. DRAW RELATIONSHIPS (The "Family Hub" Strategy)
+    // 3. DRAW RELATIONSHIPS
     const families = {};
     const processedSpouses = new Set();
 
-    // A. Group children by their parents
+    // A. Group children to find Marriages
     Object.values(people).forEach((child) => {
       if (child.parents && child.parents.length > 0) {
         const parentsKey = [...child.parents].sort().join("_X_");
@@ -128,40 +124,57 @@ export default function FamilyTreeApp() {
       }
     });
 
-    // B. Draw lines for families with children
+    // B. Draw Family Hubs (Parents + Children)
     Object.values(families).forEach((fam) => {
-        // Draw invisible hub
+        // 1. Draw the Invisible Hub
         chart += `${fam.id}[ ]:::familyNode\n`; 
 
-        // Link Parents -> Hub
+        // 2. FORCE PROXIMITY (The Ghost Link)
+        // This invisible link (~~~) pulls parents together so they don't drift apart
+        if (fam.parents.length === 2) {
+             const p1 = fam.parents[0];
+             const p2 = fam.parents[1];
+             if (people[p1] && people[p2]) {
+                 chart += `${safeID(p1)} ~~~ ${safeID(p2)}\n`; 
+             }
+        }
+
+        // 3. Connect Parents to Hub
         fam.parents.forEach(parentId => {
             if (people[parentId]) {
                 chart += `${safeID(parentId)} --- ${fam.id}\n`;
             }
         });
 
-        // Link Hub -> Children
+        // 4. Connect Hub to Children
         fam.children.forEach(childId => {
             chart += `${fam.id} --> ${safeID(childId)}\n`;
         });
         
-        // Mark these parents as "processed" so we don't draw duplicate spouse lines below
+        // Track that we processed this couple
         if (fam.parents.length === 2) {
             const pairKey = [...fam.parents].sort().join("_X_");
             processedSpouses.add(pairKey);
         }
     });
 
-    // C. Draw lines for Spouses with NO children (yet)
+    // C. Draw Childless Couples (Spouses with no kids yet)
     Object.values(people).forEach(p => {
         if(p.spouse && people[p.spouse]) {
             const pairKey = [p.id, p.spouse].sort().join("_X_");
             
-            // Only draw if we haven't already drawn a family hub for them above
             if (!processedSpouses.has(pairKey)) {
                 const famId = `FAM_COUPLE_${pairKey}`;
+                
+                // Invisible Hub
                 chart += `${famId}[ ]:::familyNode\n`;
+                
+                // Ghost Link to keep them close
+                chart += `${safeID(p.id)} ~~~ ${safeID(p.spouse)}\n`;
+                
+                // Visible Connection through Hub
                 chart += `${safeID(p.id)} --- ${famId} --- ${safeID(p.spouse)}\n`;
+                
                 processedSpouses.add(pairKey);
             }
         }
