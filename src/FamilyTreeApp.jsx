@@ -116,119 +116,93 @@ export default function FamilyTreeApp() {
   }, [people]);
   /* ------------------------- RENDER TREE ------------------------- */
 async function renderTree() {
-    if (!treeRef.current) return;
+  if (!treeRef.current) return;
 
-    let chart = "flowchart TD\n";
-    
-    // 1. STYLES
-    chart += "classDef main fill:#fff,stroke:#b91c1c,stroke-width:2px,cursor:pointer,rx:5,ry:5;\n";
-    chart += "classDef familyNode width:0px,height:0px,padding:0px,stroke:none,fill:#000;\n";
-    chart += "linkStyle default stroke:#888,stroke-width:2px,fill:none;\n"; 
+  let chart = "flowchart TD\n";
 
-    // 2. DRAW PEOPLE
-    Object.values(people).forEach((p) => {
-      chart += `${safeID(p.id)}("${safeText(p.name)}<br/>${safeText(p.birth)}${
-        p.death ? " - " + safeText(p.death) : ""
-      }"):::main\n`;
-      chart += `click ${safeID(p.id)} call window.onNodeClick("${p.id}")\n`;
-    });
+  /* ---------- STYLES ---------- */
+  chart += "classDef person fill:#fff,stroke:#b91c1c,stroke-width:2px;\n";
+  chart += "classDef marriage fill:none,stroke:none,width:0,height:0;\n";
 
-    // 3. DRAW RELATIONSHIPS
-    const families = {};
-    const processedSpouses = new Set();
+  /* ---------- PERSON NODES ---------- */
+  Object.values(people).forEach((p) => {
+    chart += `${safeID(p.id)}("${safeText(p.name)}<br/>${safeText(
+      p.birth
+    )}${p.death ? " - " + safeText(p.death) : ""}"):::person\n`;
+  });
 
-    // A. Group children to find Marriages
-    Object.values(people).forEach((child) => {
-      if (child.parents && child.parents.length > 0) {
-        const parentsKey = [...child.parents].sort().join("_X_");
-        
-        if (!families[parentsKey]) {
-            families[parentsKey] = {
-                id: `FAM_${parentsKey}`, 
-                parents: child.parents,
-                children: []
-            };
-        }
-        families[parentsKey].children.push(child.id);
+  /* ---------- BUILD MARRIAGES ---------- */
+  const marriages = {};
+
+  // A. From spouse relationships
+  Object.values(people).forEach((p) => {
+    if (p.spouse && people[p.spouse]) {
+      const pair = [p.id, p.spouse].sort();
+      const key = pair.join("_");
+
+      if (!marriages[key]) {
+        marriages[key] = {
+          id: `MARR_${key}`,
+          parents: pair,
+          children: [],
+        };
       }
-    });
-
-    // B. Draw Family Hubs (Parents + Children)
-    Object.values(families).forEach((fam) => {
-        // 1. Draw the Invisible Hub
-        chart += `${fam.id}[ ]:::familyNode\n`; 
-
-        // 2. FORCE PROXIMITY (The Subgraph Fix)
-        if (fam.parents.length === 2) {
-             const p1 = fam.parents[0];
-             const p2 = fam.parents[1];
-             if (people[p1] && people[p2]) {
-                 const subGraphId = `SG_${p1}_${p2}`.replace(/[^a-zA-Z0-9]/g, "_");
-                 
-                 // FIX: Use HTML Entity for space ("&#160;") to hide title safely
-                 chart += `subgraph ${subGraphId} ["&#160;"]\n`; 
-                 
-                 chart += `direction LR\n`; 
-                 chart += `style ${subGraphId} fill:none,stroke:none\n`; 
-                 
-                 chart += `${safeID(p1)} ~~~ ${safeID(p2)}\n`; 
-                 chart += `end\n`;
-             }
-        }
-
-        // 3. Connect Parents to Hub
-        fam.parents.forEach(parentId => {
-            if (people[parentId]) {
-                chart += `${safeID(parentId)} --- ${fam.id}\n`;
-            }
-        });
-
-        // 4. Connect Hub to Children
-        fam.children.forEach(childId => {
-            chart += `${fam.id} --> ${safeID(childId)}\n`;
-        });
-        
-        if (fam.parents.length === 2) {
-            const pairKey = [...fam.parents].sort().join("_X_");
-            processedSpouses.add(pairKey);
-        }
-    });
-
-    // C. Draw Childless Couples (Spouses with no kids yet)
-    Object.values(people).forEach(p => {
-        if(p.spouse && people[p.spouse]) {
-            const pairKey = [p.id, p.spouse].sort().join("_X_");
-            
-            if (!processedSpouses.has(pairKey)) {
-                const famId = `FAM_COUPLE_${pairKey}`;
-                chart += `${famId}[ ]:::familyNode\n`;
-
-                const subGraphId = `SG_COUPLE_${pairKey}`.replace(/[^a-zA-Z0-9]/g, "_");
-                
-                // FIX: Use HTML Entity for space ("&#160;") here as well
-                chart += `subgraph ${subGraphId} ["&#160;"]\n`; 
-
-                chart += `direction LR\n`;
-                chart += `style ${subGraphId} fill:none,stroke:none\n`;
-                
-                chart += `${safeID(p.id)} ~~~ ${safeID(p.spouse)}\n`; 
-                chart += `end\n`;
-                
-                chart += `${safeID(p.id)} --- ${famId} --- ${safeID(p.spouse)}\n`;
-                processedSpouses.add(pairKey);
-            }
-        }
-    });
-
-    treeRef.current.innerHTML = `<pre class="mermaid">${chart}</pre>`;
-    
-    try {
-        await mermaid.run({ nodes: treeRef.current.querySelectorAll(".mermaid") });
-        applyTransform();
-    } catch (e) {
-        console.error("Mermaid Render Error", e);
     }
+  });
+
+  // B. From children with two parents
+  Object.values(people).forEach((child) => {
+    if (child.parents?.length === 2) {
+      const pair = [...child.parents].sort();
+      const key = pair.join("_");
+
+      if (!marriages[key]) {
+        marriages[key] = {
+          id: `MARR_${key}`,
+          parents: pair,
+          children: [],
+        };
+      }
+
+      marriages[key].children.push(child.id);
+    }
+  });
+
+  /* ---------- RENDER MARRIAGES ---------- */
+  Object.values(marriages).forEach((fam) => {
+    const [p1, p2] = fam.parents;
+    const mId = fam.id;
+    const sgId = `SG_${mId}`;
+
+    // Force spouses side-by-side
+    chart += `
+subgraph ${sgId} [" "]
+  direction LR
+  ${safeID(p1)} --- ${safeID(p2)}
+end
+style ${sgId} fill:none,stroke:none
+`;
+
+    // Invisible marriage node
+    chart += `${mId}{ }:::marriage\n`;
+    chart += `${safeID(p1)} --- ${mId}\n`;
+    chart += `${safeID(p2)} --- ${mId}\n`;
+
+    // Children centered below marriage
+    fam.children.forEach((cid) => {
+      chart += `${mId} --> ${safeID(cid)}\n`;
+    });
+  });
+
+  /* ---------- RENDER ---------- */
+  treeRef.current.innerHTML = `<pre class="mermaid">${chart}</pre>`;
+  await mermaid.run({
+    nodes: treeRef.current.querySelectorAll(".mermaid"),
+  });
+
+  applyTransform();
 }
+
   /* ------------------------- PAN / ZOOM LOGIC ------------------------- */
   function applyTransform() {
     const el = treeRef.current;
