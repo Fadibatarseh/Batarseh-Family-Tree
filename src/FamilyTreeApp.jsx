@@ -131,18 +131,18 @@ async function renderTree() {
     )}${p.death ? " - " + safeText(p.death) : ""}"):::person\n`;
   });
 
-  /* ---------- BUILD MARRIAGES ---------- */
-  const marriages = {};
+  /* ---------- BUILD FAMILY UNITS ---------- */
+  const families = {};
 
-  // A. From spouse relationships
+  // 1. From spouse relationships
   Object.values(people).forEach((p) => {
     if (p.spouse && people[p.spouse]) {
       const pair = [p.id, p.spouse].sort();
       const key = pair.join("_");
 
-      if (!marriages[key]) {
-        marriages[key] = {
-          id: `MARR_${key}`,
+      if (!families[key]) {
+        families[key] = {
+          id: `M_${key}`,
           parents: pair,
           children: [],
         };
@@ -150,45 +150,46 @@ async function renderTree() {
     }
   });
 
-  // B. From children with two parents
+  // 2. From children with two parents
   Object.values(people).forEach((child) => {
     if (child.parents?.length === 2) {
       const pair = [...child.parents].sort();
       const key = pair.join("_");
 
-      if (!marriages[key]) {
-        marriages[key] = {
-          id: `MARR_${key}`,
+      if (!families[key]) {
+        families[key] = {
+          id: `M_${key}`,
           parents: pair,
           children: [],
         };
       }
 
-      marriages[key].children.push(child.id);
+      families[key].children.push(child.id);
     }
   });
 
-  /* ---------- RENDER MARRIAGES ---------- */
-  Object.values(marriages).forEach((fam) => {
+  /* ---------- RENDER FAMILY UNITS ---------- */
+  Object.values(families).forEach((fam) => {
     const [p1, p2] = fam.parents;
     const mId = fam.id;
-    const sgId = `SG_${mId}`;
 
-    // Force spouses side-by-side
+    // A. Group spouses horizontally (visual only)
     chart += `
-subgraph ${sgId} [" "]
+subgraph SG_${mId} [" "]
   direction LR
   ${safeID(p1)} --- ${safeID(p2)}
 end
-style ${sgId} fill:none,stroke:none
+style SG_${mId} fill:none,stroke:none
 `;
 
-    // Invisible marriage node
+    // B. Marriage node
     chart += `${mId}{ }:::marriage\n`;
-    chart += `${safeID(p1)} --- ${mId}\n`;
-    chart += `${safeID(p2)} --- ${mId}\n`;
 
-    // Children centered below marriage
+    // C. Parents -> marriage (ONLY hierarchy path)
+    chart += `${safeID(p1)} --> ${mId}\n`;
+    chart += `${safeID(p2)} --> ${mId}\n`;
+
+    // D. Marriage -> children
     fam.children.forEach((cid) => {
       chart += `${mId} --> ${safeID(cid)}\n`;
     });
