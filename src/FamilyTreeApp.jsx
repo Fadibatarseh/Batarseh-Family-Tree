@@ -109,7 +109,7 @@ export default function FamilyTreeApp() {
   }
 
   /* ------------------------- RENDER TREE ------------------------- */
-  async function renderTree() {
+ async function renderTree() {
     if (!treeRef.current) return;
 
     let chart = "flowchart TD\n";
@@ -159,12 +159,14 @@ export default function FamilyTreeApp() {
              if (people[p1] && people[p2]) {
                  const subGraphId = `SG_${p1}_${p2}`.replace(/[^a-zA-Z0-9]/g, "_");
                  
-                 // --- FIX 1: Add [" "] to hide the title ---
-                 chart += `subgraph ${subGraphId} [" "]\n`;
-                 // ------------------------------------------
-
+                 // REVERTED: Just use the ID, no brackets
+                 chart += `subgraph ${subGraphId}\n`; 
+                 
                  chart += `direction LR\n`; 
-                 chart += `style ${subGraphId} fill:none,stroke:none\n`; 
+                 
+                 // FIX: Added 'color:#fafafa' to hide the text against the background
+                 chart += `style ${subGraphId} fill:none,stroke:none,color:#fafafa\n`; 
+                 
                  chart += `${safeID(p1)} ~~~ ${safeID(p2)}\n`; 
                  chart += `end\n`;
              }
@@ -199,12 +201,14 @@ export default function FamilyTreeApp() {
 
                 const subGraphId = `SG_COUPLE_${pairKey}`.replace(/[^a-zA-Z0-9]/g, "_");
                 
-                // --- FIX 2: Add [" "] to hide the title ---
-                chart += `subgraph ${subGraphId} [" "]\n`;
-                // ------------------------------------------
+                // REVERTED: Just use the ID, no brackets
+                chart += `subgraph ${subGraphId}\n`; 
 
                 chart += `direction LR\n`;
-                chart += `style ${subGraphId} fill:none,stroke:none\n`;
+                
+                // FIX: Added 'color:#fafafa' to hide the text against the background
+                chart += `style ${subGraphId} fill:none,stroke:none,color:#fafafa\n`;
+                
                 chart += `${safeID(p.id)} ~~~ ${safeID(p.spouse)}\n`; 
                 chart += `end\n`;
                 
@@ -223,7 +227,6 @@ export default function FamilyTreeApp() {
         console.error("Mermaid Render Error", e);
     }
 }
-
   /* ------------------------- PAN / ZOOM LOGIC ------------------------- */
   function applyTransform() {
     const el = treeRef.current;
