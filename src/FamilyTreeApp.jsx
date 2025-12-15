@@ -27,6 +27,8 @@ export default function FamilyTreeApp() {
     spouse: "",
   });
 
+  const [imageFile, setImageFile] = useState(null);
+
   const [selectedChildren, setSelectedChildren] = useState([]);
 
   /* ------------------------- REFS ------------------------- */
