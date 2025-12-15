@@ -43,12 +43,17 @@ export default function FamilyTreeApp() {
   const lastMouse = useRef({ x: 0, y: 0 });
 
   /* ------------------------- INITIALIZATION ------------------------- */
+/* ------------------------- INITIALIZATION ------------------------- */
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: "loose",
       theme: "base",
-      flowchart: { curve: "basis" }, // 'basis' creates smoother curves for family trees
+      flowchart: { 
+          curve: "stepAfter", // <--- CRITICAL: Forces 90-degree lines (no loopy curves)
+          nodeSpacing: 50,    // <--- Keeps family members closer together
+          rankSpacing: 80,    // <--- Reduces vertical gap between generations
+      }, 
     });
   }, []);
 
